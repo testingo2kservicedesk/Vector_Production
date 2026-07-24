@@ -29,8 +29,8 @@ def create_app():
     allowed_origins = os.getenv(
         "CORS_ORIGINS",
         
-        "https://vector-production-763471782494.asia-south1.run.app",
-        
+        "https://vector-app-884203903500.asia-south1.run.app",
+
       
         
     ).split(",")
