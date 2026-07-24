@@ -28,10 +28,11 @@ def create_app():
 
     allowed_origins = os.getenv(
         "CORS_ORIGINS",
-        "http://localhost:3000,"
-        "http://localhost:3001,"
-        "http://127.0.0.1:3000,"
-        "http://192.168.0.70:3000"
+        
+        "https://vector-production-763471782494.asia-south1.run.app",
+        
+      
+        
     ).split(",")
 
     CORS(
