@@ -16,6 +16,7 @@ from dailyproduction import dailyproduction_bp
 from invoice import invoice_bp
 from stockregister import stockregister_bp
 from dashboard import dashboard_bp
+from forgot_password import forgot_password_bp
 
 
 def create_app():
@@ -52,6 +53,7 @@ def create_app():
     app.register_blueprint(invoice_bp)
     app.register_blueprint(stockregister_bp)
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(forgot_password_bp)
     return app
 
 

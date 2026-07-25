@@ -68,6 +68,109 @@
   animation: admin-card-in 520ms ease both;
 }
 
+.common-login-card {
+  padding-top: 34px;
+}
+
+.common-login-logo {
+  display: block;
+  width: 76px;
+  height: 50px;
+  margin: 0 auto 16px;
+  object-fit: contain;
+}
+
+.common-login-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -7px;
+}
+
+.common-login-link,
+.recovery-back-link {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 0.16s ease;
+}
+
+.common-login-link:hover,
+.recovery-back-link:hover {
+  color: var(--accent);
+}
+
+.common-login-link:focus-visible,
+.recovery-back-link:focus-visible {
+  border-radius: 6px;
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.recovery-card {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+.recovery-header {
+  margin-bottom: 18px;
+}
+
+.admin-login-header .recovery-subtitle {
+  max-width: 340px;
+  margin: 0 auto;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.recovery-message,
+.recovery-error {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.recovery-message {
+  color: var(--text-primary);
+  background: var(--accent-soft-bg);
+  border: 1px solid var(--accent-soft-border);
+}
+
+.recovery-error {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 9%, var(--bg-surface));
+  border: 1px solid color-mix(in srgb, var(--danger) 28%, transparent);
+}
+
+.admin-input-wrap .recovery-otp-input {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 7px;
+}
+
+.recovery-secondary-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.recovery-secondary-actions .admin-inline-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.recovery-back-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: fit-content;
+  margin: 20px auto 0;
+}
+
 .admin-login-badge {
   width: 50px;
   height: 50px;

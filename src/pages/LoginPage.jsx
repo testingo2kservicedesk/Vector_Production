@@ -12,7 +12,7 @@ import {
 
 import { useAuth } from "../context/Auth";
 
-import "./LoginPage.css";
+import "./AdminLogin.css";
 
 const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL || "";
@@ -87,172 +87,80 @@ function LoginPage() {
   };
 
   return (
-    <main className="login-page">
+    <main className="admin-login-page">
+      <div className="admin-bg-grid" />
+      <div className="admin-bg-glow glow1" />
+      <div className="admin-bg-glow glow2" />
 
-      {/* Background Blur Shapes */}
+      <section className="admin-login-card common-login-card">
+        <img
+          className="common-login-logo"
+          src="/images/vector-pdf.png"
+          alt="Vector"
+        />
 
-      <div className="bg-circle circle1"></div>
-      <div className="bg-circle circle2"></div>
-      <div className="bg-circle circle3"></div>
+        <div className="admin-login-header">
+          <h1>Welcome</h1>
+        </div>
 
-      <div className="login-shell">
-
-        {/* ===========================
-            LEFT BRAND PANEL
-        ============================ */}
-
-        <section className="login-brand-panel">
-
-          <div className="brand-top">
-
-            <h1>Vector Application</h1>
-
-            <p>
-              Production &amp; Sales Control Portal
-            </p>
-
+        <form className="admin-login-form" onSubmit={handleSubmit}>
+          <div className="admin-field">
+            <label>Email Address</label>
+            <div className="admin-input-wrap">
+              <Mail size={17} className="admin-input-icon" />
+              <input
+                type="email"
+                placeholder="name@company.com"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
           </div>
 
-        </section>
-
-        {/* ===========================
-             LOGIN CARD
-        ============================ */}
-
-        <section className="login-card">
-
-          <div className="login-header">
-
-            <h2>welcome !</h2>
-
-          </div>
-
-          <form
-            className="login-form"
-            onSubmit={handleSubmit}
-          >
-
-            {/* EMAIL */}
-
-            <div className="field">
-
-              <label>Email Address</label>
-
-              <div className="input-wrap">
-
-                <Mail
-                  size={18}
-                  className="input-icon"
-                />
-
-                <input
-                  type="email"
-                  placeholder="name@company.com"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) =>
-                    setEmail(e.target.value)
-                  }
-                  required
-                />
-
-              </div>
-
-            </div>
-
-            {/* PASSWORD */}
-
-            <div className="field">
-
-              <label>Password</label>
-
-              <div className="input-wrap">
-
-                <Lock
-                  size={18}
-                  className="input-icon"
-                />
-
-                <input
-                  type={
-                    showPassword
-                      ? "text"
-                      : "password"
-                  }
-                  placeholder="Enter password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) =>
-                    setPassword(e.target.value)
-                  }
-                  required
-                />
-
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() =>
-                    setShowPassword(!showPassword)
-                  }
-                >
-                  {showPassword ? (
-                    <EyeOff size={18} />
-                  ) : (
-                    <Eye size={18} />
-                  )}
-                </button>
-
-              </div>
-
-            </div>
-
-            {/* REMEMBER */}
-
-            <div className="login-options">
-
-              <label className="remember">
-
-                <input type="checkbox" />
-
-                <span>
-
-                  Remember Me
-
-                </span>
-
-              </label>
-
-              <Link
-                to="/forgot-password"
-                className="forgot-link"
+          <div className="admin-field">
+            <label>Password</label>
+            <div className="admin-input-wrap">
+              <Lock size={17} className="admin-input-icon" />
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className="admin-password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
-
-                Forgot Password?
-
-              </Link>
-
+                {showPassword ? (
+                  <EyeOff size={17} />
+                ) : (
+                  <Eye size={17} />
+                )}
+              </button>
             </div>
+          </div>
 
-            {/* BUTTON */}
+          <div className="common-login-actions">
+            <Link to="/forgot-password" className="common-login-link">
+              Forgot Password?
+            </Link>
+          </div>
 
-            <button
-              type="submit"
-              className="login-button"
-              disabled={submitting}
-            >
-
-              {submitting
-                ? "Signing In..."
-                : "Sign In"}
-
-            </button>
-
-           </form>
-
-        </section>
-
-      </div>
-
+          <button
+            type="submit"
+            className="admin-login-button"
+            disabled={submitting}
+          >
+            {submitting ? "Signing In..." : "Sign In"}
+          </button>
+        </form>
+      </section>
     </main>
   );
 }

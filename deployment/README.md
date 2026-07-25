@@ -53,6 +53,27 @@ gcloud secrets create vector-jwt-secret --data-file=jwt-secret.txt
 gcloud run services update vector-api --region=asia-south1 --set-env-vars=DEBUG=false,CORS_ORIGINS=https://YOUR_PROJECT_ID.web.app --set-secrets=JWT_SECRET=vector-jwt-secret:latest
 ```
 
+Password-reset OTP emails use Microsoft Graph and Microsoft Entra ID:
+
+1. Register an application in Microsoft Entra ID.
+2. Under **API permissions**, add Microsoft Graph's **Mail.Send** application
+   permission and grant tenant-wide admin consent.
+3. Create a client secret and choose the Microsoft 365 mailbox that will send
+   the OTP messages.
+4. For tighter access, use an Exchange Online application access policy or
+   application RBAC to restrict the app to the sender mailbox.
+
+Configure the non-secret identifiers as environment variables and keep both
+secrets in Secret Manager:
+
+```powershell
+gcloud secrets create vector-password-reset-secret --data-file=password-reset-secret.txt
+gcloud secrets create vector-microsoft-client-secret --data-file=microsoft-client-secret.txt
+gcloud run services update vector-api --region=asia-south1 `
+  --set-env-vars=MAIL_PROVIDER=microsoft_graph,MICROSOFT_TENANT_ID=YOUR_TENANT_ID,MICROSOFT_CLIENT_ID=YOUR_CLIENT_ID,MICROSOFT_SENDER_EMAIL=sender@yourdomain.com `
+  --set-secrets=PASSWORD_RESET_SECRET=vector-password-reset-secret:latest,MICROSOFT_CLIENT_SECRET=vector-microsoft-client-secret:latest
+```
+
 ## Frontend
 
 Copy `.firebaserc.example` to `.firebaserc`, replace the project ID, then set

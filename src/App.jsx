@@ -135,7 +135,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Sidebar from "./components/Sidebar";
 import navConfig from "./data/navConfig";
 import LoginPage from "./pages/LoginPage";
-import AdminLoginPage from "./pages/AdminLogin";
+import ForgotPassword from "./pages/ForgotPassword";
 
 import Dashboard from "./pages/Dashboard";
 import BOQ from "./pages/Model";
@@ -340,7 +340,7 @@ function AppShell() {
             <Route
               path="/admin/create-user"
               element={
-                <ProtectedRoute allowedRoles={["admin"]} redirectTo="/admin/login">
+                <ProtectedRoute allowedRoles={["admin"]} redirectTo="/login">
                   <AdminCreateUser />
                 </ProtectedRoute>
               }
@@ -365,9 +365,9 @@ export default function App() {
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/admin/login" element={<AdminLoginPage />} />
-            <Route path="/forgot-password" element={<h1>Forgot Password</h1>} />
-            <Route path="/register" element={<Navigate to="/admin/login" replace />} />
+            <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/register" element={<Navigate to="/login" replace />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/*" element={<AppShell />} />
           </Routes>
