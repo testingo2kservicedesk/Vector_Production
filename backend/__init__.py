@@ -31,6 +31,7 @@ def create_app():
         "CORS_ORIGINS",
         
         "https://vector-prod-884203903500.asia-south1.run.app",
+        "https://production.vector-power.com"
 
       
         
