@@ -258,6 +258,8 @@
   /* Issue 6: keep theme changes smooth without delaying interaction feedback. */
   transition: all 180ms ease;
 }
+.change-password-btn { display: flex; align-items: center; justify-content: center; gap: 7px; width: 100%; margin-bottom: 10px; border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; background: var(--bg-surface); color: var(--text-secondary); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.change-password-btn:hover { background: var(--bg-surface-alt); color: var(--text-primary); }
 
 .theme-toggle:hover {
   background: var(--bg-surface-alt);

@@ -1,6 +1,6 @@
 import React from "react";
 import Swal from "sweetalert2";
-import { Sun, Moon, LogOut, ChevronRight, ChevronLeft } from "lucide-react";
+import { Sun, Moon, LogOut, KeyRound, ChevronRight, ChevronLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import "./Sidebar.css";
@@ -9,7 +9,7 @@ import "./Sidebar.css";
 // navConfig + the signed-in user's role). Sidebar no longer imports the
 // full navConfig itself, so it can never render a tab the user can't
 // actually open.
-export default function Sidebar({ active, items, onSelect, open, onClose, onToggle, onLogout }) {
+export default function Sidebar({ active, items, onSelect, open, onClose, onToggle, onLogout, onChangePassword }) {
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === "dark";
   const navigate = useNavigate();
@@ -82,6 +82,13 @@ export default function Sidebar({ active, items, onSelect, open, onClose, onTogg
             title={open ? "Collapse sidebar" : "Expand sidebar"}
           >
             {open ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+          </button>
+
+          <button
+            className="change-password-btn"
+            onClick={onChangePassword}
+          >
+            <KeyRound size={15} /> Change Password
           </button>
 
           <button

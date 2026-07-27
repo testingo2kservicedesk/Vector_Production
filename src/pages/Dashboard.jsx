@@ -16,6 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import KpiCard from "../components/KpiCard";
+import DatePicker from "../components/DatePicker";
 import { useThemeColors } from "../context/ThemeContext";
 import api from "../components/Api";
 import { useAuth } from "../context/Auth";
@@ -86,9 +87,11 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const { role } = useAuth();
+  const dashboardCacheKey = `vector_dashboard_${role || "guest"}`;
   const isRegularUser = role === "user";
-  const canViewSalesValue = role === "admin" || role === "coadmin" || role === "production_incharge";
-  const [activeView, setActiveView] = useState(() => isRegularUser ? "production" : "sales");
+  const isProductionOnly = role === "user" || role === "production_incharge";
+  const canViewSalesValue = role === "admin" || role === "coadmin";
+  const [activeView, setActiveView] = useState(() => isProductionOnly ? "production" : "sales");
   const [qcRange, setQcRange] = useState("daily");
   const [userActivity, setUserActivity] = useState("qc");
   const [qcFromDate, setQcFromDate] = useState("");
@@ -108,8 +111,8 @@ export default function Dashboard() {
   const chartRefs = useRef({});
 
   useEffect(() => {
-    if (isRegularUser && activeView !== "production") setActiveView("production");
-  }, [isRegularUser, activeView]);
+    if (isProductionOnly && activeView !== "production") setActiveView("production");
+  }, [isProductionOnly, activeView]);
 
   useEffect(() => {
     document.body.style.overflow = expandedChart ? "hidden" : "";
@@ -137,6 +140,19 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
 
+    try {
+      const cached = sessionStorage.getItem(dashboardCacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.data) {
+          setDashboard(parsed.data);
+          setIsLoading(false);
+        }
+      }
+    } catch {
+      // A cache miss or malformed browser storage must never block loading.
+    }
+
     const loadDashboard = async () => {
       try {
         const response = await api.get("/dashboard");
@@ -157,6 +173,7 @@ export default function Dashboard() {
 
         if (!cancelled) {
           setDashboard(dashboardData);
+          try { sessionStorage.setItem(dashboardCacheKey, JSON.stringify({ data: dashboardData, savedAt: Date.now() })); } catch {}
           setLoadError(false);
         }
       } catch {
@@ -167,8 +184,11 @@ export default function Dashboard() {
     };
 
     loadDashboard();
-    return () => { cancelled = true; };
-  }, [isRegularUser]);
+    const refreshTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") loadDashboard();
+    }, 30000);
+    return () => { cancelled = true; window.clearInterval(refreshTimer); };
+  }, [isRegularUser, dashboardCacheKey]);
 
   const liveKpis = dashboard?.kpis || EMPTY_KPIS;
   const kpis = useMemo(
@@ -361,8 +381,8 @@ export default function Dashboard() {
           <p className="dashboard-eyebrow-label">Operations control</p>
           <h2 className="dashboard-page-heading">Production &amp; sales overview</h2>
         </div>
-        <div className="dashboard-tabs" data-active={activeView} data-single={isRegularUser} role="tablist" aria-label="Dashboard views">
-          {!isRegularUser && <button className={`dashboard-tab${activeView === "sales" ? " active" : ""}`} onClick={() => setActiveView("sales")} role="tab" aria-selected={activeView === "sales"}><TrendingUp size={16} /> Sales</button>}
+        <div className="dashboard-tabs" data-active={activeView} data-single={isProductionOnly} role="tablist" aria-label="Dashboard views">
+          {!isProductionOnly && <button className={`dashboard-tab${activeView === "sales" ? " active" : ""}`} onClick={() => setActiveView("sales")} role="tab" aria-selected={activeView === "sales"}><TrendingUp size={16} /> Sales</button>}
           <button className={`dashboard-tab${activeView === "production" ? " active" : ""}`} onClick={() => setActiveView("production")} role="tab" aria-selected={activeView === "production"}><Factory size={16} /> Production</button>
         </div>
       </header>
@@ -399,7 +419,7 @@ export default function Dashboard() {
         <div className={`chart-grid ${activeView === "sales" ? "sales-chart-grid" : "production-chart-grid"}`}>
           {!isRegularUser && <div ref={(node) => { chartRefs.current.workload = node; }} data-chart-key="workload" className={`panel chart-panel${expandedChart === "workload" ? " chart-panel-expanded" : ""}`}>
             <div className="chart-heading"><div><span>{activeView === "production" ? "User activity" : "Distribution"}</span><h3 className="panel-title">{activeView === "production" ? `${userActivity === "assembled" ? "Assembled" : userActivity === "packaged" ? "Packaged" : "QC tested"} by user` : "Units dispatched by location"}</h3></div><div className="chart-heading-actions">{activeView === "production" ? <><div className="dashboard-range-switch chart-range-switch"><button type="button" className={userActivity === "assembled" ? "active" : ""} onClick={() => setUserActivity("assembled")}>Assembled</button><button type="button" className={userActivity === "qc" ? "active" : ""} onClick={() => setUserActivity("qc")}>QC</button><button type="button" className={userActivity === "packaged" ? "active" : ""} onClick={() => setUserActivity("packaged")}>Packaged</button></div><div className="dashboard-range-switch chart-range-switch"><button type="button" className={qcRange === "daily" ? "active" : ""} onClick={() => setQcRange("daily")}>Daily</button><button type="button" className={qcRange === "weekly" ? "active" : ""} onClick={() => setQcRange("weekly")}>Weekly</button></div><Factory size={18} /></> : <MapPin size={18} />}<button type="button" className="chart-expand-btn" onClick={() => toggleChartFullscreen("workload")} aria-label={expandedChart === "workload" ? "Exit fullscreen" : "Expand chart"}>{expandedChart === "workload" ? <><Minimize2 size={16} /> <span>Exit Fullscreen</span></> : <Expand size={16} />}</button></div></div>
-            {activeView === "production" && <div className="chart-filter-row">{!isRegularUser && <DashboardFilterSelect label="User" value={qcUserFilter} onChange={setQcUserFilter} options={[{ value: "all", label: "All users" }, ...qcUsers.map((user) => ({ value: user, label: user }))]} />}<div className="chart-date-filter"><label>From <input type="date" value={qcFromDate} onChange={(event) => setQcFromDate(event.target.value)} /></label><label>To <input type="date" value={qcToDate} min={qcFromDate || undefined} onChange={(event) => setQcToDate(event.target.value)} /></label></div><button type="button" className="chart-clear-filter" onClick={() => { setQcRange("daily"); setQcUserFilter("all"); setQcFromDate(""); setQcToDate(""); }}>Clear filters</button></div>}
+            {activeView === "production" && <div className="chart-filter-row">{!isRegularUser && <DashboardFilterSelect label="User" value={qcUserFilter} onChange={setQcUserFilter} options={[{ value: "all", label: "All users" }, ...qcUsers.map((user) => ({ value: user, label: user }))]} />}<div className="chart-date-filter"><label>From <DatePicker value={qcFromDate} onChange={setQcFromDate} ariaLabel="Select filter start date" /></label><label>To <DatePicker value={qcToDate} onChange={setQcToDate} ariaLabel="Select filter end date" /></label></div><button type="button" className="chart-clear-filter" onClick={() => { setQcRange("daily"); setQcUserFilter("all"); setQcFromDate(""); setQcToDate(""); }}>Clear filters</button></div>}
             <div className="chart-scroll"><div className="chart-scroll-inner" style={{ width: (activeView === "production" ? qcUserData : locationSales).length > 8 ? `${(activeView === "production" ? qcUserData : locationSales).length * 92}px` : "100%" }}><ResponsiveContainer width="100%" height={expandedChart === "workload" ? 650 : 280}>
               <BarChart data={activeView === "production" ? qcUserData : locationSales} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                 <CartesianGrid stroke={chartTheme.grid} vertical={false} />

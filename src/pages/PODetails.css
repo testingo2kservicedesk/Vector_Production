@@ -1,4 +1,10 @@
 .po-page { display: flex; flex-direction: column; }
+
+/* Isolated add-PO dialog: do not inherit another page's generic modal size. */
+.po-entry-modal { width: min(94vw, 1100px) !important; max-width: 1100px !important; max-height: 92vh !important; }
+.po-entry-modal:has(.app-date-picker-popover) { overflow: visible !important; }
+.po-entry-modal:has(.app-date-picker-popover) .modal-header { border-radius: 16px 16px 0 0; }
+.po-entry-modal:has(.app-date-picker-popover) .modal-footer { border-radius: 0 0 16px 16px; }
  
 .po-toolbar {
   display: flex;

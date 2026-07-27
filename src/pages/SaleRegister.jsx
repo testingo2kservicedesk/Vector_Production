@@ -9,6 +9,8 @@ import DataTable from "../components/DataTable";
 import StatusDropdown from "../components/StatusDropdown";
 import api from "../components/Api";
 import { fmtINR } from "../data/mockData";
+import { formatDate } from "../utils/date";
+import DatePicker from "../components/DatePicker";
 import "./SaleRegister.css";
 import "../components/StatusDropdown.css";
 
@@ -268,14 +270,7 @@ export function calculateWarrantyDates(invoiceDate, warrantyPeriod) {
 
 // ---- View popup formatting helpers ----
 function formatDateDisplay(value) {
-  if (!value) return "Not Provided";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return String(value);
-  return parsed.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  });
+  return formatDate(value, "Not Provided");
 }
 
 function formatDetailValue(field, row) {
@@ -376,6 +371,10 @@ function renderDetailField(
 
   const value = editValues[field.key] ?? "";
 
+  if (field.isDate) {
+    return <DatePicker value={value} onChange={(date) => onChange({ target: { name: field.key, value: date } })} ariaLabel={`Select ${field.label}`} />;
+  }
+
   if (field.key === "model") {
     return (
       <SearchableSelect
@@ -452,7 +451,7 @@ function renderDetailField(
   return (
     <input
       className="sale-details-edit-input"
-      type={field.type === "number" ? "number" : field.type === "date" ? "date" : field.type === "tel" ? "tel" : "text"}
+      type={field.type === "number" ? "number" : field.type === "tel" ? "tel" : "text"}
       name={field.key}
       value={value}
       onChange={onChange}
@@ -713,19 +712,14 @@ export default function SaleRegister() {
     setDetailsError("");
 
     try {
-      const res = await fetch(`${SALES_API_URL}/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await api.put(`/sales/${id}`, {
           ...editValues,
           date: editValues.date || editValues.clientPoDate,
           warrantyPeriod: editValues.warrantyPeriod ? Number(editValues.warrantyPeriod) : "",
-        }),
       });
-
-      const payload = await res.json();
-      if (!res.ok || !payload.success) {
-        throw new Error(payload.message || `Server responded with ${res.status}`);
+      const payload = res.data;
+      if (!payload.success) {
+        throw new Error(payload.message || "Unable to update sale");
       }
 
       const { success, message, ...updatedRow } = payload;
@@ -901,20 +895,15 @@ export default function SaleRegister() {
     setFormError("");
 
     try {
-      const res = await fetch(SALES_API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const res = await api.post("/sales", {
           ...formValues,
           date: formValues.date || formValues.clientPoDate,
           // Persist warranty period as a number of years, per spec.
           warrantyPeriod: formValues.warrantyPeriod ? Number(formValues.warrantyPeriod) : "",
-        }),
       });
-
-      const payload = await res.json();
-      if (!res.ok || !payload.success) {
-        throw new Error(payload.message || `Server responded with ${res.status}`);
+      const payload = res.data;
+      if (!payload.success) {
+        throw new Error(payload.message || "Unable to save sale");
       }
 
       // The blueprint returns { success, message, id, ...fields, createdAt, updatedAt } flat 
@@ -983,14 +972,10 @@ export default function SaleRegister() {
     setDeleting(true);
 
     try {
-      const res = await fetch(`${SALES_API_URL}/bulk-delete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: Array.from(selectedIds) }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || `Server responded with ${res.status}`);
+      const res = await api.post("/sales/bulk-delete", { ids: Array.from(selectedIds) });
+      const data = res.data;
+      if (!data.success) {
+        throw new Error(data.message || "Unable to delete sales");
       }
 
       const deletedCount = selectedIds.size;
@@ -1234,12 +1219,7 @@ export default function SaleRegister() {
               <div className="sale-form-grid">
                 <label className="sale-field">
                   <span>Client PO Date</span>
-                  <input
-                    type="date"
-                    name="clientPoDate"
-                    value={formValues.clientPoDate}
-                    onChange={handleFormChange}
-                  />
+                  <DatePicker value={formValues.clientPoDate} onChange={(clientPoDate) => setFormValues((prev) => ({ ...prev, clientPoDate }))} ariaLabel="Select client PO date" />
                 </label>
 
                 <label className="sale-field">
@@ -1350,12 +1330,7 @@ export default function SaleRegister() {
                 
                  <label className="sale-field">
                   <span>Invoice Date</span>
-                  <input
-                    type="date"
-                    name="invoiceDate"
-                    value={formValues.invoiceDate}
-                    onChange={handleFormChange}
-                  />
+                  <DatePicker value={formValues.invoiceDate} onChange={(invoiceDate) => setFormValues((prev) => ({ ...prev, invoiceDate }))} ariaLabel="Select invoice date" />
                 </label>
                
                
@@ -1404,52 +1379,24 @@ export default function SaleRegister() {
 
                 <label className="sale-field">
                   <span>Warranty Start Date</span>
-                  <input
-                    type="date"
-                    name="warrantyStartDate"
-                    value={formValues.warrantyStartDate}
-                    readOnly
-                    tabIndex={-1}
-                    onKeyDown={(e) => e.preventDefault()}
-                    onClick={(e) => e.preventDefault()}
-                    title="Automatically set to the Invoice Date"
-                  />
+                  <div title="Automatically set to the Invoice Date"><DatePicker value={formValues.warrantyStartDate} onChange={() => {}} disabled ariaLabel="Warranty start date" /></div>
                 </label>
 
                 <label className="sale-field">
                   <span>Warranty End Date</span>
-                  <input
-                    type="date"
-                    name="warrantyEndDate"
-                    value={formValues.warrantyEndDate}
-                    readOnly
-                    tabIndex={-1}
-                    onKeyDown={(e) => e.preventDefault()}
-                    onClick={(e) => e.preventDefault()}
-                    title="Automatically calculated from Invoice Date + Warranty Period"
-                  />
+                  <div title="Automatically calculated from Invoice Date + Warranty Period"><DatePicker value={formValues.warrantyEndDate} onChange={() => {}} disabled ariaLabel="Warranty end date" /></div>
                 </label>
               </div>
               <div className="sale-form-section-title">Dispatch Details</div>
               <div className="sale-form-grid">
                 <label className="sale-field">
                   <span>Expected Dispatch Date</span>
-                  <input
-                    type="date"
-                    name="expectedDispatchDate"
-                    value={formValues.expectedDispatchDate}
-                    onChange={handleFormChange}
-                  />
+                  <DatePicker value={formValues.expectedDispatchDate} onChange={(expectedDispatchDate) => setFormValues((prev) => ({ ...prev, expectedDispatchDate }))} ariaLabel="Select expected dispatch date" />
                 </label>
 
                 <label className="sale-field">
                   <span>Actual Dispatch Date</span>
-                  <input
-                    type="date"
-                    name="actualDispatchDate"
-                    value={formValues.actualDispatchDate}
-                    onChange={handleFormChange}
-                  />
+                  <DatePicker value={formValues.actualDispatchDate} onChange={(actualDispatchDate) => setFormValues((prev) => ({ ...prev, actualDispatchDate }))} ariaLabel="Select actual dispatch date" />
                 </label>
                 <label className="sale-field">
                   <span>Dispatch Status</span>

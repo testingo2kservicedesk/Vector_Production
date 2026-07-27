@@ -21,6 +21,8 @@ import SearchBar, { SearchableSelect } from "../components/SearchBar";
 import PageFilter, { matchesPageFilter } from "../components/PageFilter";
 import ExportPdfButton from "../components/ExportPdfButton";
 import DataTable from "../components/DataTable";
+import { formatDate } from "../utils/date";
+import DatePicker from "../components/DatePicker";
 import "./Invoices.css";
  
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "";
@@ -74,7 +76,7 @@ const swalError = (title, text) =>
 const columns = [
   { key: "phase", label: "Phase" },
   { key: "invoice", label: "Invoice No", mono: true },
-  { key: "date", label: "Invoice Date" },
+  { key: "date", label: "Invoice Date", isDate: true },
   { key: "po", label: "PO No", mono: true },
   { key: "code", label: "Item Code", mono: true },
   { key: "desc", label: "Item Description" },
@@ -88,7 +90,7 @@ const INVOICE_FILTER_FIELDS = columns.filter((column) => ["phase", "date", "po",
 const DETAIL_FIELDS = [
   { key: "phase", label: "Phase" },
   { key: "invoice", label: "Invoice No" },
-  { key: "date", label: "Invoice Date" },
+  { key: "date", label: "Invoice Date", isDate: true },
   { key: "po", label: "PO No" },
   { key: "code", label: "Item Code" },
   { key: "desc", label: "Item Description" },
@@ -149,7 +151,7 @@ function formatDetailValue(field, row) {
   if (raw === null || raw === undefined || String(raw).trim() === "") {
     return "Not Provided";
   }
-  return String(raw);
+  return field.isDate ? formatDate(raw, "Not Provided") : String(raw);
 }
  
 // ---------- Friendly error extraction for network/API failures ----------
@@ -730,7 +732,7 @@ export default function Invoices() {
           onClick={requestClose}
         >
           <div
-            className={`modal-container${closing ? " closing" : ""}`}
+            className={`modal-container invoice-entry-modal${closing ? " closing" : ""}`}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -765,12 +767,7 @@ export default function Invoices() {
  
                 <label className="invoices-field">
                   <span>Invoice Date <span className="invoices-required-asterisk">*</span></span>
-                  <input
-                    type="date"
-                    name="date"
-                    value={formValues.date}
-                    onChange={handleFormChange}
-                  />
+                  <DatePicker value={formValues.date} onChange={(date) => setFormValues((prev) => ({ ...prev, date }))} ariaLabel="Select invoice date" />
                 </label>
  
                 <label className="invoices-field">

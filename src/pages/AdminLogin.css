@@ -54,6 +54,19 @@
   animation-delay: -4s;
 }
 
+/* Forgot Password is presented like a focused modal over the login scene. */
+.admin-login-page:has(.recovery-card)::before {
+  z-index: 0;
+  background: rgba(20, 18, 14, 0.28);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.admin-login-page:has(.recovery-card) .admin-bg-grid,
+.admin-login-page:has(.recovery-card) .admin-bg-glow {
+  filter: blur(10px);
+  transform: scale(1.04);
+}
+
 .admin-login-card {
   position: relative;
   z-index: 1;
