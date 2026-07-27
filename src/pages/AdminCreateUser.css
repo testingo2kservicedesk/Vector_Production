@@ -217,6 +217,9 @@
   text-align: center;
 }
 
+.acu-row-actions { display: inline-flex; align-items: center; gap: 6px; }
+.acu-field select { width: 100%; min-height: 42px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-surface); color: var(--text-primary); padding: 0 12px; font: inherit; }
+
 .app-main .acu-page .acu-delete-btn {
   display: inline-flex;
   align-items: center;

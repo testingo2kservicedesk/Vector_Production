@@ -8,6 +8,8 @@ import PageFilter, { matchesPageFilter } from "../components/PageFilter";
 import ExportPdfButton from "../components/ExportPdfButton";
 import DataTable from "../components/DataTable";
 import StatusDropdown from "../components/StatusDropdown";
+import { formatDate } from "../utils/date";
+import DatePicker from "../components/DatePicker";
 import { fmtINR } from "../data/mockData";
 import "./PODetails.css";
 
@@ -62,7 +64,7 @@ const PAGE_SIZE = 10;
 const columns = [
   { key: "phase", label: "Phase" },
   { key: "po", label: "PO No", mono: true },
-  { key: "date", label: "PO Date" },
+  { key: "date", label: "PO Date", isDate: true },
   { key: "code", label: "Item Code", mono: true },
   { key: "desc", label: "Item Description" },
   { key: "qty", label: "Qty Ordered" },
@@ -158,14 +160,7 @@ function validateEditForm(values) {
 }
 
 function formatDateDisplay(value) {
-  if (!value) return "Not Provided";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return String(value);
-  return parsed.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  });
+  return formatDate(value, "Not Provided");
 }
 
 function toDateInputValue(value) {
@@ -983,7 +978,7 @@ export default function PODetails() {
       {modalOpen && createPortal(
         <div className={`modal-overlay${closing ? " closing" : ""}`} onClick={requestClose}>
           <div
-            className={`modal-container${closing ? " closing" : ""}`}
+            className={`modal-container po-entry-modal${closing ? " closing" : ""}`}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -1030,12 +1025,7 @@ export default function PODetails() {
 
                 <label className="po-field">
                   <span>PO Date</span>
-                  <input
-                    type="date"
-                    name="date"
-                    value={formValues.date}
-                    onChange={handleFormChange}
-                  />
+                  <DatePicker value={formValues.date} onChange={(date) => setFormValues((prev) => ({ ...prev, date }))} ariaLabel="Select PO date" />
                 </label>
 
                 <label className="po-field">
@@ -1115,12 +1105,7 @@ export default function PODetails() {
 
                 <label className="po-field">
                   <span>Expected Delivery Date</span>
-                  <input
-                    type="date"
-                    name="expectedDeliveryDate"
-                    value={formValues.expectedDeliveryDate}
-                    onChange={handleFormChange}
-                  />
+                  <DatePicker value={formValues.expectedDeliveryDate} onChange={(expectedDeliveryDate) => setFormValues((prev) => ({ ...prev, expectedDeliveryDate }))} ariaLabel="Select expected delivery date" />
                 </label>
 
                 <label className="po-field">
@@ -1208,13 +1193,11 @@ export default function PODetails() {
                               placeholder="Select status"
                             />
                           ) : (
-                            <input
-                              type={field.isDate ? "date" : field.isNumber ? "number" : "text"}
-                              className="po-details-edit-input"
-                              name={field.key}
-                              value={editForm[field.key] ?? ""}
-                              onChange={handleEditFormChange}
-                            />
+                            field.isDate ? (
+                              <DatePicker value={editForm[field.key] ?? ""} onChange={(date) => setEditForm((prev) => ({ ...prev, [field.key]: date }))} ariaLabel={`Select ${field.label}`} />
+                            ) : (
+                              <input type={field.isNumber ? "number" : "text"} className="po-details-edit-input" name={field.key} value={editForm[field.key] ?? ""} onChange={handleEditFormChange} />
+                            )
                           )
                         ) : (
                           formatDetailValue(field, previewDetailsRow)
@@ -1233,13 +1216,7 @@ export default function PODetails() {
                       <div className="po-details-label">{field.label}</div>
                       <div className="po-details-value">
                         {detailsEditMode && field.editable ? (
-                          <input
-                            type="date"
-                            className="po-details-edit-input"
-                            name={field.key}
-                            value={editForm[field.key] ?? ""}
-                            onChange={handleEditFormChange}
-                          />
+                          <DatePicker value={editForm[field.key] ?? ""} onChange={(date) => setEditForm((prev) => ({ ...prev, [field.key]: date }))} ariaLabel={`Select ${field.label}`} />
                         ) : (
                           formatDetailValue(field, detailsRow)
                         )}

@@ -388,8 +388,8 @@
   background: var(--bg-surface);
   border-radius: 16px;
   width: 100%;
-  max-width: 860px;
-  max-height: 88vh;
+  max-width: 1080px;
+  max-height: 92vh;
   display: flex;
   flex-direction: column;
   box-shadow: var(--shadow-sm);

@@ -1,5 +1,6 @@
 import React from "react";
 import { Eye } from "lucide-react";
+import { formatDate } from "../utils/date";
 import "./DataTable.css";
 
 export default function DataTable({ columns, rows, onViewDetails }) {
@@ -23,7 +24,7 @@ export default function DataTable({ columns, rows, onViewDetails }) {
             <tr key={i}>
               {columns.map((c) => (
                 <td key={c.key} className={c.mono ? "mono" : ""}>
-                  {c.render ? c.render(r) : c.format ? c.format(r[c.key]) : r[c.key]}
+                  {c.render ? c.render(r) : c.format ? c.format(r[c.key]) : c.isDate ? formatDate(r[c.key]) : r[c.key]}
                 </td>
               ))}
               {onViewDetails && (

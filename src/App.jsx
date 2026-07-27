@@ -127,7 +127,7 @@
 // }
 
 import React, { useEffect, useState } from "react";
-import { Menu, User } from "lucide-react";
+import { ChevronDown, KeyRound, Menu, User, X } from "lucide-react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider, useAuth } from "./context/Auth";
@@ -136,6 +136,7 @@ import Sidebar from "./components/Sidebar";
 import navConfig from "./data/navConfig";
 import LoginPage from "./pages/LoginPage";
 import ForgotPassword from "./pages/ForgotPassword";
+import api from "./components/Api";
 
 import Dashboard from "./pages/Dashboard";
 import BOQ from "./pages/Model";
@@ -170,6 +171,11 @@ function AppShell() {
   const navigate = useNavigate();
   const { role, name, email, logout } = useAuth();
   const [navOpen, setNavOpen] = useState(true);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSaving, setPasswordSaving] = useState(false);
 
   // Only show/allow nav items this role is permitted to see.
   const visibleNav = navConfig.filter((item) => item.roles.includes(role));
@@ -186,6 +192,7 @@ function AppShell() {
 
     return () => window.removeEventListener("resize", syncSidebarToViewport);
   }, []);
+
 
   useEffect(() => {
     const root = document.body;
@@ -229,6 +236,14 @@ function AppShell() {
     logout();
     navigate("/login");
   };
+  const changePassword = async (event) => {
+    event.preventDefault();
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) return setPasswordError("New passwords do not match.");
+    setPasswordSaving(true); setPasswordError("");
+    try { await api.post("/account/change-password", passwordForm); setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" }); setProfileOpen(false); }
+    catch (error) { setPasswordError(error.response?.data?.message || "Unable to change password."); }
+    finally { setPasswordSaving(false); }
+  };
 
   return (
     <div className="app-shell">
@@ -240,6 +255,7 @@ function AppShell() {
         onClose={() => setNavOpen(false)}
         onToggle={() => setNavOpen((prev) => !prev)}
         onLogout={handleLogout}
+        onChangePassword={() => setProfileOpen(true)}
       />
 
       <div className="app-main">
@@ -259,6 +275,8 @@ function AppShell() {
           </div>
 
           <div className="app-topbar-right">
+            <div className="profile-menu-wrap"><button type="button" className="profile-menu-toggle" onClick={() => setProfileMenuOpen((open) => !open)} aria-label="Open profile menu" aria-expanded={profileMenuOpen}><ChevronDown size={16} /></button>{profileMenuOpen && <div className="profile-menu"><button type="button" onClick={() => { setProfileMenuOpen(false); setProfileOpen(true); }}><KeyRound size={15} /> Change password</button></div>}</div>
+            <button type="button" className="profile-password-trigger" onClick={() => setProfileOpen(true)}><KeyRound size={15} /> Change password</button>
             <div className="app-user" title={`${email || name || "Signed-in user"} — ${roleLabel}`}>
               <span className="app-user-icon" aria-hidden="true">
                 <User size={17} />
@@ -270,6 +288,8 @@ function AppShell() {
             </div>
           </div>
         </header>
+
+        {profileOpen && <div className="profile-password-overlay" onClick={() => setProfileOpen(false)}><div className="profile-password-modal" onClick={(event) => event.stopPropagation()}><button type="button" className="profile-password-close" onClick={() => setProfileOpen(false)}><X size={18} /></button><h2><KeyRound size={19} /> Change Password</h2><p>{email}</p><form onSubmit={changePassword}><label>Current password<input type="password" value={passwordForm.currentPassword} onChange={(event) => setPasswordForm((form) => ({ ...form, currentPassword: event.target.value }))} required /></label><label>New password<input type="password" minLength={8} value={passwordForm.newPassword} onChange={(event) => setPasswordForm((form) => ({ ...form, newPassword: event.target.value }))} required /></label><label>Confirm new password<input type="password" minLength={8} value={passwordForm.confirmPassword} onChange={(event) => setPasswordForm((form) => ({ ...form, confirmPassword: event.target.value }))} required /></label>{passwordError && <div className="profile-password-error">{passwordError}</div>}<button type="submit" disabled={passwordSaving}>{passwordSaving ? "Updating..." : "Update password"}</button></form></div></div>}
 
         <main className="app-content">
           <Routes>
@@ -332,7 +352,7 @@ function AppShell() {
             <Route
               path="/defects"
               element={
-                <ProtectedRoute allowedRoles={["admin", "coadmin"]}>
+                <ProtectedRoute allowedRoles={["admin", "coadmin", "production_incharge"]}>
                   <DefectiveUnits />
                 </ProtectedRoute>
               }

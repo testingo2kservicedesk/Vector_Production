@@ -10,6 +10,7 @@ import {
   EyeOff,
   Users,
   Trash2,
+  Pencil,
   X,
 } from "lucide-react";
 import api from "../components/Api";
@@ -83,6 +84,9 @@ function AdminCreateUser() {
   const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "", role: "user" });
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [accountForm, setAccountForm] = useState({ role: "user" });
+  const [savingAccount, setSavingAccount] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -169,6 +173,29 @@ function AdminCreateUser() {
     }
   };
 
+  const openAccountEditor = (user) => {
+    setEditingUser(user);
+    setAccountForm({ role: user.role || "user" });
+  };
+
+  const saveAccount = async (event) => {
+    event.preventDefault();
+    setSavingAccount(true);
+    try {
+      const res = await api.patch(`/admin/users/${editingUser.id}/account`, {
+        role: accountForm.role,
+      });
+      if (!res.data.success) throw new Error(res.data.message);
+      await swalSuccess("Account updated", `${editingUser.name || editingUser.email} has been updated.`);
+      setEditingUser(null);
+      fetchUsers();
+    } catch (err) {
+      await swalError("Update failed", err.response?.data?.message || err.message || "Please try again.");
+    } finally {
+      setSavingAccount(false);
+    }
+  };
+
   const filteredUsers = users.filter((user) => matchesPageFilter(user, pageFilter, USER_FILTER_FIELDS));
 
   return (
@@ -230,14 +257,10 @@ function AdminCreateUser() {
                   </td>
                   <td className="acu-td-action">
                     {u.email?.toLowerCase() !== currentUserEmail?.toLowerCase() && (
-                      <button
-                        className="acu-delete-btn"
-                        onClick={() => handleDelete(u)}
-                        title="Delete user"
-                        aria-label={`Delete ${u.name || u.email || "user"}`}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                      <div className="acu-row-actions">
+                        <button className="acu-delete-btn" onClick={() => openAccountEditor(u)} title="Edit role or password" aria-label={`Edit ${u.name || u.email || "user"}`}><Pencil size={14} /></button>
+                        <button className="acu-delete-btn" onClick={() => handleDelete(u)} title="Delete user" aria-label={`Delete ${u.name || u.email || "user"}`}><Trash2 size={14} /></button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -360,6 +383,19 @@ function AdminCreateUser() {
           </div>
         </div>,
         document.body
+      )}
+
+      {editingUser && createPortal(
+        <div className="acu-overlay" onClick={() => !savingAccount && setEditingUser(null)}>
+          <div className="acu-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="acu-modal-header"><div className="acu-modal-title"><Pencil size={18} /> Edit Account</div><button className="acu-modal-close" onClick={() => !savingAccount && setEditingUser(null)}><X size={18} /></button></div>
+            <form className="acu-form" onSubmit={saveAccount}>
+              <p className="acu-hint">Updating the role for {editingUser.name || editingUser.email}.</p>
+              <div className="acu-field"><label>Role</label><select value={accountForm.role} onChange={(event) => setAccountForm((form) => ({ ...form, role: event.target.value }))}>{ROLE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></div>
+              <div className="acu-modal-actions"><button type="button" className="acu-cancel-btn" onClick={() => setEditingUser(null)}>Cancel</button><button type="submit" className="acu-submit" disabled={savingAccount}>{savingAccount ? "Saving..." : "Save Changes"}</button></div>
+            </form>
+          </div>
+        </div>, document.body
       )}
     </div>
   );

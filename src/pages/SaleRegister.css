@@ -559,8 +559,11 @@
 
 .sale-form {
   padding: 0px 24px;
-  overflow-y: auto;
+  overflow-y: auto !important;
   flex: 1;
+  min-height: 0;
+  overscroll-behavior: contain;
+  padding-bottom: 28px;
   display: flex;
   flex-direction: column;
   gap: 4px;

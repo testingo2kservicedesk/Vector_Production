@@ -953,6 +953,23 @@ html body .dashboard-filter-select-menu { max-height: 240px !important; overflow
   box-shadow: var(--shadow-lg) !important;
   animation: vector-fade-up 220ms var(--ease) both;
 }
+
+/* Shared CRUD progress dialog: keep the loader on the Vector yellow brand. */
+.swal2-container:has(.swal-vector-popup) { background: rgba(31, 26, 14, 0.34) !important; backdrop-filter: blur(6px); }
+.swal-vector-popup .swal2-loader { border-color: var(--accent) transparent var(--accent) transparent !important; }
+.swal-vector-popup .swal2-title { color: var(--text-primary) !important; }
+
+/* Keep add/edit forms comfortably sized on desktop.  Date pickers may extend
+   beyond the form body without being clipped by a fixed modal footer. */
+.modal-container {
+  width: min(94vw, 1100px) !important;
+  max-width: 1100px !important;
+  max-height: 92vh !important;
+}
+.modal-container:has(.app-date-picker-popover) { overflow: visible !important; }
+.modal-container:has(.app-date-picker-popover) .modal-header { border-radius: var(--r-xl) var(--r-xl) 0 0; }
+.modal-container:has(.app-date-picker-popover) .modal-footer { border-radius: 0 0 var(--r-xl) var(--r-xl); }
+.modal-container :is(.production-form, .invoices-form, .defects-form):has(.app-date-picker-popover) { overflow: visible !important; }
 :is(.modal-header, .details-modal-header, .po-details-header, .sale-details-header,
     .invoices-details-header, .production-details-header, .stock-details-header) {
   background: var(--bg-surface-alt) !important;

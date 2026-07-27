@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
  
 import { createPortal } from "react-dom";
 import api from "../components/Api";
+import { formatDate } from "../utils/date";
+import DatePicker from "../components/DatePicker";
  
 import Swal from "sweetalert2";
  
@@ -255,7 +257,7 @@ const swalError = (title, text) =>
  
 const columns = [
  
-  { key: "date", label: "Date" },
+  { key: "date", label: "Date", isDate: true },
  
   { key: "phase", label: "Phase" },
  
@@ -290,7 +292,7 @@ const PRODUCTION_FILTER_FIELDS = columns.filter((column) => [
  
 const DETAIL_FIELDS = [
  
-  { key: "date", label: "Date" },
+  { key: "date", label: "Date", isDate: true },
  
   { key: "model", label: "Model" },
  
@@ -470,7 +472,7 @@ function formatDetailValue(field, row) {
  
   }
  
-  return String(raw);
+  return field.isDate ? formatDate(raw, "Not Provided") : String(raw);
  
 }
  
@@ -1012,7 +1014,7 @@ export default function DailyProduction() {
   const handleSerialNumberChange = (index, value) => {
     setFormValues((prev) => {
       const serialNumbers = [...(prev.serialNumbers || [])];
-      serialNumbers[index] = value;
+      serialNumbers[index] = value.toUpperCase();
       return { ...prev, serialNumbers, serial: serialNumbers[0] || "" };
     });
   };
@@ -1862,17 +1864,7 @@ export default function DailyProduction() {
               <div className="production-form-grid">
                 <label className="production-field">
 <span>Date <span className="production-required-asterisk">*</span></span>
-<input
- 
-                    type="date"
- 
-                    name="date"
- 
-                    value={formValues.date}
- 
-                    onChange={handleFormChange}
- 
-                  />
+<DatePicker value={formValues.date} onChange={(date) => setFormValues((prev) => ({ ...prev, date }))} ariaLabel="Select assembly date" />
 </label>
 
 <label className="production-field">
@@ -2147,7 +2139,7 @@ export default function DailyProduction() {
                   <label><span>Serial No.</span><input value={(qcInspectionTarget.type === "form" ? formValues.serial : qcInspectionTarget.row?.serial) || ""} readOnly /></label>
                   <label>
                     <span>QC Inspection Date <b>*</b></span>
-                    <input type="date" name="inspectionDate" value={qcInspectionDraft.inspectionDate || ""} onChange={handleQcInspectionFieldChange} readOnly={qcReportReadOnly} />
+                    <DatePicker value={qcInspectionDraft.inspectionDate || ""} onChange={(inspectionDate) => setQcInspectionDraft((current) => ({ ...current, inspectionDate }))} disabled={qcReportReadOnly} ariaLabel="Select QC inspection date" />
                   </label>
                 </div>
 

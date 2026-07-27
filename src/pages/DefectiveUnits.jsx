@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import axios from "axios";
+import api from "../components/Api";
 import Swal from "sweetalert2";
 import {
   Plus,
@@ -30,9 +30,10 @@ import PageFilter, { matchesPageFilter } from "../components/PageFilter";
 import StatusDropdown from "../components/StatusDropdown";
 import ExportPdfButton from "../components/ExportPdfButton";
 import DataTable from "../components/DataTable";
+import { formatDate } from "../utils/date";
+import DatePicker from "../components/DatePicker";
 import "./DefectiveUnits.css";
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "";
 const PAGE_SIZE = 10;
 
 // ---------- Inlined SweetAlert2 theme (same look as Daily Production /
@@ -79,7 +80,7 @@ const swalError = (title, text) =>
   });
 
 const columns = [
-  { key: "date", label: "Date Reported" },
+  { key: "date", label: "Date Reported", isDate: true },
   { key: "make", label: "Make" },
   { key: "model", label: "Model" },
   { key: "serial", label: "Serial No", mono: true },
@@ -91,7 +92,7 @@ const DEFECT_FILTER_FIELDS = columns.filter((column) => ["make", "model", "part"
 
 // Flat list of every field shown in the "View Details" popup, in order.
 const DETAIL_FIELDS = [
-  { key: "date", label: "Date Reported" },
+  { key: "date", label: "Date Reported", isDate: true },
   { key: "make", label: "Make" },
   { key: "model", label: "Model" },
   { key: "serial", label: "Serial No" },
@@ -309,7 +310,7 @@ export default function DefectiveUnits() {
     const pageToFetch = targetPage ?? page;
 
     try {
-      const res = await axios.get(`${API_BASE_URL}/defects`, {
+      const res = await api.get("/defects", {
         params: { page: pageToFetch, limit: PAGE_SIZE },
       });
       if (!res.data.success) {
@@ -466,9 +467,9 @@ export default function DefectiveUnits() {
 
       let res;
       if (isEditMode) {
-        res = await axios.put(`${API_BASE_URL}/defects/${formValues.id}`, body);
+        res = await api.put(`/defects/${formValues.id}`, body);
       } else {
-        res = await axios.post(`${API_BASE_URL}/defects`, body);
+        res = await api.post("/defects", body);
       }
 
       if (!res.data.success) {
@@ -508,7 +509,7 @@ export default function DefectiveUnits() {
 
     setDeletingId(id);
     try {
-      const res = await axios.delete(`${API_BASE_URL}/defects/${id}`);
+      const res = await api.delete(`/defects/${id}`);
       if (!res.data.success) {
         throw new Error(res.data.message || "Failed to delete Defective Unit");
       }
@@ -567,7 +568,7 @@ export default function DefectiveUnits() {
 
     setBulkDeleting(true);
     try {
-      const res = await axios.post(`${API_BASE_URL}/defects/bulk-delete`, {
+      const res = await api.post("/defects/bulk-delete", {
         ids: Array.from(selectedIds),
       });
       if (!res.data.success) {
@@ -839,12 +840,7 @@ export default function DefectiveUnits() {
               <div className="defect-form-grid">
                 <label className="defect-field">
                   <span>Date Reported</span>
-                  <input
-                    type="date"
-                    name="date"
-                    value={formValues.date}
-                    onChange={handleFormChange}
-                  />
+                  <DatePicker value={formValues.date} onChange={(date) => setFormValues((prev) => ({ ...prev, date }))} ariaLabel="Select date reported" />
                 </label>
 
                 <label className="defect-field">
@@ -1087,11 +1083,11 @@ export default function DefectiveUnits() {
               <section className="details-modal-section">
                 <h3 className="details-modal-section-title">Defect Details</h3>
                 <div className="details-modal-grid">
-                  {DETAIL_FIELDS.map(({ key, label }) => (
+                  {DETAIL_FIELDS.map(({ key, label, isDate }) => (
                     <React.Fragment key={key}>
                       <div className="details-modal-field-name">{label}</div>
                       <div className="details-modal-field-value">
-                        {formatDetailValue(viewRow[key])}
+                        {isDate ? formatDate(viewRow[key], "Not Provided") : formatDetailValue(viewRow[key])}
                       </div>
                     </React.Fragment>
                   ))}
