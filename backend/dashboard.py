@@ -1,4 +1,5 @@
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
@@ -81,11 +82,10 @@ def _stock_reorder_count(assembly_docs, po_docs, invoice_docs, boq_docs):
         model_ref = phase_ref.parent.parent if phase_ref else None
         model_id = model_ref.id if model_ref else ""
         phase_id = phase_ref.id if phase_ref else ""
+        # The phase ID is already available from the parent reference.  Do
+        # not fetch each parent phase document here: that turns a dashboard
+        # request into hundreds of serial Firestore reads for large BOQs.
         phase_name = ""
-        try:
-            phase_name = (phase_ref.get().to_dict() or {}).get("name", "")
-        except Exception:
-            pass
 
         for row in boq.get("rows", []) or []:
             code = row.get("code", "")
@@ -109,26 +109,39 @@ def _stock_reorder_count(assembly_docs, po_docs, invoice_docs, boq_docs):
     return sum(1 for item in items.values() if item["purchased"] - item["consumed"] < item["minLevel"])
 
 
+def _stream_collection(name):
+    return [(doc.to_dict() or {}) for doc in db.collection(name).stream()]
+
+
 @dashboard_bp.route("/dashboard", methods=["GET"])
 @roles_required("admin", "coadmin", "production_incharge", "user")
 def get_dashboard():
     """Return the dashboard's operational snapshot from live Firestore data."""
     try:
+        # Production incharges only need production and quality data.  Avoid
+        # loading the large sales/stock collections for their dashboard.
+        production_scoped = request.user.get("role") in {"user", "production_incharge"}
         user_scoped = request.user.get("role") == "user"
-        assembly_docs = [(doc.to_dict() or {}) for doc in db.collection("assembly_units").stream()]
-        defect_docs = [(doc.to_dict() or {}) for doc in db.collection("defective_units").stream()]
-        if user_scoped:
-            model_docs = []
-            sale_docs = []
-            invoice_docs = []
-            po_docs = []
-            boq_docs = []
-        else:
-            model_docs = [(doc.to_dict() or {}) for doc in db.collection("models").stream()]
-            sale_docs = [(doc.to_dict() or {}) for doc in db.collection("sale_register").stream()]
-            invoice_docs = [(doc.to_dict() or {}) for doc in db.collection("invoices").stream()]
-            po_docs = [(doc.to_dict() or {}) for doc in db.collection("po_details").stream()]
-            boq_docs = list(db.collection_group("boqs").stream())
+        with ThreadPoolExecutor(max_workers=7) as executor:
+            assembly_future = executor.submit(_stream_collection, "assembly_units")
+            defect_future = executor.submit(_stream_collection, "defective_units")
+            if production_scoped:
+                model_future = sale_future = invoice_future = po_future = boq_future = None
+            else:
+                model_future = executor.submit(_stream_collection, "models")
+                sale_future = executor.submit(_stream_collection, "sale_register")
+                invoice_future = executor.submit(_stream_collection, "invoices")
+                po_future = executor.submit(_stream_collection, "po_details")
+                boq_future = executor.submit(lambda: list(db.collection_group("boqs").stream()))
+            assembly_docs = assembly_future.result()
+            defect_docs = defect_future.result()
+            model_docs = model_future.result() if model_future else []
+            sale_docs = sale_future.result() if sale_future else []
+            invoice_docs = invoice_future.result() if invoice_future else []
+            po_docs = po_future.result() if po_future else []
+            boq_docs = boq_future.result() if boq_future else []
+        if production_scoped:
+            model_docs = sale_docs = invoice_docs = po_docs = boq_docs = []
 
         assembly_activity_docs = _activity_docs(assembly_docs, "assembly", user_scoped)
         qc_activity_docs = _activity_docs(assembly_docs, "qc", user_scoped)

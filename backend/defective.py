@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from flask import Blueprint, request, jsonify
 from firebase_config import db, bucket
+from auth_utils import roles_required
 
 defects_bp = Blueprint("defects", __name__)
 defects_collection = db.collection("defective_units")
@@ -52,6 +53,7 @@ def _upload_attachments(files):
 
 
 @defects_bp.route("/defects", methods=["POST"])
+@roles_required("admin", "coadmin", "production_incharge")
 def create_defect():
     data = request.form
     if not data:
@@ -96,6 +98,7 @@ def create_defect():
 
 
 @defects_bp.route("/defects", methods=["GET"])
+@roles_required("admin", "coadmin", "production_incharge")
 def list_defects():
     try:
         try:
@@ -133,6 +136,7 @@ def list_defects():
 
 
 @defects_bp.route("/defects/bulk-delete", methods=["POST"])
+@roles_required("admin", "coadmin", "production_incharge")
 def bulk_delete_defects():
     """Delete the rows selected by the Defective Units toolbar."""
     data = request.get_json(silent=True) or {}
@@ -175,6 +179,7 @@ def bulk_delete_defects():
 
 
 @defects_bp.route("/defects/<defect_id>", methods=["GET"])
+@roles_required("admin", "coadmin", "production_incharge")
 def get_defect(defect_id):
     try:
         doc = defects_collection.document(defect_id).get()
@@ -186,6 +191,7 @@ def get_defect(defect_id):
 
 
 @defects_bp.route("/defects/<defect_id>", methods=["PUT"])
+@roles_required("admin", "coadmin", "production_incharge")
 def update_defect(defect_id):
     # Now accepts multipart/form-data (like create_defect) so edits can
     # include new attachment uploads, not just plain JSON text fields.
@@ -219,6 +225,7 @@ def update_defect(defect_id):
 
 
 @defects_bp.route("/defects/<defect_id>", methods=["DELETE"])
+@roles_required("admin", "coadmin", "production_incharge")
 def delete_defect(defect_id):
     try:
         doc_ref = defects_collection.document(defect_id)

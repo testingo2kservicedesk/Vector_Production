@@ -80,3 +80,32 @@ def delete_user(user_id):
 
     doc_ref.delete()
     return jsonify({"success": True, "message": "User deleted"}), 200
+
+
+@admin_users_bp.route("/admin/users/<user_id>/account", methods=["PATCH"])
+@roles_required("admin")
+def update_user_account(user_id):
+    """Update another user's role and/or password after re-authentication."""
+    data = request.get_json(silent=True) or {}
+    role = data.get("role")
+
+    actor_ref = users_collection.document(str(request.user.get("sub") or ""))
+    actor = actor_ref.get()
+
+    target_ref = users_collection.document(user_id)
+    target = target_ref.get()
+    if not target.exists:
+        return jsonify({"success": False, "message": "User not found"}), 404
+    if target.id == actor.id:
+        return jsonify({"success": False, "message": "You cannot change your own account from this screen"}), 403
+
+    updates = {}
+    if role is not None:
+        if role not in ALLOWED_ROLES:
+            return jsonify({"success": False, "message": "Invalid role"}), 400
+        updates["role"] = role
+    if not updates:
+        return jsonify({"success": False, "message": "Choose a role"}), 400
+
+    target_ref.update(updates)
+    return jsonify({"success": True, "message": "Account updated"}), 200
