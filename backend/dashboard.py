@@ -113,6 +113,38 @@ def _stream_collection(name):
     return [(doc.to_dict() or {}) for doc in db.collection(name).stream()]
 
 
+def _sales_dashboard_data(sales_docs, model_names, include_all_active_sales=False):
+    """Build the sales chart payload for either Vector or Customer Sales."""
+    dispatched = [
+        sale for sale in sales_docs
+        if sale.get("dispatch") != "Cancelled"
+        and (include_all_active_sales or sale.get("dispatch") == "Dispatched")
+    ]
+    locations = defaultdict(float); location_by_day = defaultdict(float); location_by_week = defaultdict(float)
+    client_by_day = defaultdict(float); sales_by_month = defaultdict(float); sales_by_model_month = defaultdict(float)
+    for sale in sales_docs:
+        if sale.get("dispatch") == "Cancelled":
+            continue
+        period = _packed_period(sale.get("date")); model = (sale.get("model") or "Unspecified").strip() or "Unspecified"
+        sales_by_model_month[(period[:7], model)] += _number(sale.get("qty"))
+    for sale in dispatched:
+        location = (sale.get("location") or "Unspecified").strip() or "Unspecified"; quantity = _number(sale.get("qty"))
+        locations[location] += quantity
+        location_by_day[(_packed_period(sale.get("date")), location)] += quantity
+        location_by_week[(_packed_period(sale.get("date"), weekly=True), location)] += quantity
+        client = (sale.get("client") or "Unspecified").strip() or "Unspecified"
+        client_by_day[(_packed_period(sale.get("date")), client)] += quantity
+        sales_by_month[_packed_period(sale.get("date"))[:7]] += quantity
+    return {
+        "kpis": {"sold": _display_number(sum(_number(sale.get("qty")) for sale in dispatched)), "salesValue": sum(_number(sale.get("value")) for sale in sales_docs)},
+        "modelNames": sorted(set(model_names) | {model for _, model in sales_by_model_month}, key=str.casefold),
+        "locationSalesByDay": [{"period": period, "location": location, "units": _display_number(units)} for (period, location), units in sorted(location_by_day.items())],
+        "clientSalesByDay": [{"period": period, "client": client, "units": _display_number(units)} for (period, client), units in sorted(client_by_day.items())],
+        "salesByMonth": [{"period": period, "units": _display_number(units)} for period, units in sorted(sales_by_month.items())],
+        "salesByModelMonth": [{"period": period, "model": model, "units": _display_number(units)} for (period, model), units in sorted(sales_by_model_month.items())],
+    }
+
+
 @dashboard_bp.route("/dashboard", methods=["GET"])
 @roles_required("admin", "coadmin", "production_incharge", "user")
 def get_dashboard():
@@ -126,10 +158,11 @@ def get_dashboard():
             assembly_future = executor.submit(_stream_collection, "assembly_units")
             defect_future = executor.submit(_stream_collection, "defective_units")
             if production_scoped:
-                model_future = sale_future = invoice_future = po_future = boq_future = None
+                model_future = sale_future = customer_sale_future = invoice_future = po_future = boq_future = None
             else:
                 model_future = executor.submit(_stream_collection, "models")
                 sale_future = executor.submit(_stream_collection, "sale_register")
+                customer_sale_future = executor.submit(_stream_collection, "customer_sales")
                 invoice_future = executor.submit(_stream_collection, "invoices")
                 po_future = executor.submit(_stream_collection, "po_details")
                 boq_future = executor.submit(lambda: list(db.collection_group("boqs").stream()))
@@ -137,11 +170,12 @@ def get_dashboard():
             defect_docs = defect_future.result()
             model_docs = model_future.result() if model_future else []
             sale_docs = sale_future.result() if sale_future else []
+            customer_sale_docs = customer_sale_future.result() if customer_sale_future else []
             invoice_docs = invoice_future.result() if invoice_future else []
             po_docs = po_future.result() if po_future else []
             boq_docs = boq_future.result() if boq_future else []
         if production_scoped:
-            model_docs = sale_docs = invoice_docs = po_docs = boq_docs = []
+            model_docs = sale_docs = customer_sale_docs = invoice_docs = po_docs = boq_docs = []
 
         assembly_activity_docs = _activity_docs(assembly_docs, "assembly", user_scoped)
         qc_activity_docs = _activity_docs(assembly_docs, "qc", user_scoped)
@@ -292,6 +326,9 @@ def get_dashboard():
                 for model in model_docs
                 if (model.get("name") or "").strip()
             }, key=str.casefold),
+            "customerSales": _sales_dashboard_data(customer_sale_docs, [
+                (model.get("name") or "").strip() for model in model_docs if (model.get("name") or "").strip()
+            ], include_all_active_sales=True),
             "locationSales": [
                 {"location": location, "units": _display_number(units)}
                 for location, units in sorted(locations.items(), key=lambda item: (-item[1], item[0].lower()))
