@@ -8,6 +8,7 @@ from auth_utils import roles_required
  
 saleregister_bp = Blueprint("saleregister", __name__)
 sales_collection = db.collection("sale_register")
+customer_sales_collection = db.collection("customer_sales")
 assembly_collection = db.collection("assembly_units")
  
 REQUIRED_FIELDS = [
@@ -64,6 +65,25 @@ def _serialize(doc):
         "createdAt": d.get("createdAt").isoformat() if d.get("createdAt") else None,
         "updatedAt": d.get("updatedAt").isoformat() if d.get("updatedAt") else None,
     }
+
+
+def _serialize_customer_sale(doc):
+    data = doc.to_dict() or {}
+    return {
+        **{key: data.get(key, "") for key in ALLOWED_FIELDS},
+        "id": doc.id,
+        "parentSaleId": data.get("parentSaleId", ""),
+        "createdAt": data.get("createdAt").isoformat() if data.get("createdAt") else None,
+        "updatedAt": data.get("updatedAt").isoformat() if data.get("updatedAt") else None,
+    }
+
+
+def _attach_customer_sales(sales):
+    """Attach the separately stored customer sale to its corresponding sale row."""
+    for sale in sales:
+        customer_doc = customer_sales_collection.document(sale["id"]).get()
+        sale["customerSale"] = _serialize_customer_sale(customer_doc) if customer_doc.exists else None
+    return sales
  
  
 def _coerce_serial_numbers(data, qty):
@@ -360,7 +380,7 @@ def list_sales():
  
         return jsonify({
             "success": True,
-            "sales": [_serialize(doc) for doc in docs],
+            "sales": _attach_customer_sales([_serialize(doc) for doc in docs]),
             "pagination": {
                 "page": page,
                 "limit": limit,
@@ -380,7 +400,7 @@ def get_sale(sale_id):
         doc = sales_collection.document(sale_id).get()
         if not doc.exists:
             return jsonify({"success": False, "message": "Sale not found"}), 404
-        return jsonify({"success": True, "sale": _serialize(doc)}), 200
+        return jsonify({"success": True, "sale": _attach_customer_sales([_serialize(doc)])[0]}), 200
     except Exception as exc:
         return jsonify({"success": False, "message": f"Failed to fetch sale: {exc}"}), 500
  
@@ -496,6 +516,33 @@ def update_sale(sale_id):
         return jsonify({"success": False, "message": str(exc)}), 400
     except Exception as exc:
         return jsonify({"success": False, "message": f"Failed to update sale: {exc}"}), 500
+
+
+@saleregister_bp.route("/sales/<sale_id>/customer-sale", methods=["PUT"])
+@roles_required("admin", "coadmin", "production_incharge")
+def save_customer_sale(sale_id):
+    """Store the customer-sale form against its parent sale record."""
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"success": False, "message": "Request body must be JSON"}), 400
+
+    try:
+        doc_ref = sales_collection.document(sale_id)
+        if not doc_ref.get().exists:
+            return jsonify({"success": False, "message": "Sale not found"}), 404
+
+        customer_sale = {key: data.get(key, "") for key in ALLOWED_FIELDS}
+        customer_sale["date"] = customer_sale.get("date") or customer_sale.get("clientPoDate", "")
+        now = datetime.now(timezone.utc)
+        customer_ref = customer_sales_collection.document(sale_id)
+        existing_customer_sale = customer_ref.get()
+        customer_sale["parentSaleId"] = sale_id
+        customer_sale["createdAt"] = existing_customer_sale.to_dict().get("createdAt", now) if existing_customer_sale.exists else now
+        customer_sale["updatedAt"] = now
+        customer_ref.set(customer_sale)
+        return jsonify({"success": True, "message": "Customer sale saved", "customerSale": _serialize_customer_sale(customer_ref.get())}), 200
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"Failed to save customer sale: {exc}"}), 500
  
  
 @saleregister_bp.route("/sales/bulk-delete", methods=["POST"])

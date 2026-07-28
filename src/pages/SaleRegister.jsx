@@ -474,6 +474,7 @@ export default function SaleRegister() {
   const [totalCount, setTotalCount] = useState(0);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [customerSaleParent, setCustomerSaleParent] = useState(null);
   const [closing, setClosing] = useState(false);
   const [formValues, setFormValues] = useState(emptySaleForm);
   const [formError, setFormError] = useState("");
@@ -511,6 +512,7 @@ export default function SaleRegister() {
   const [editValues, setEditValues] = useState({});
   const [detailsSaving, setDetailsSaving] = useState(false);
   const [detailsError, setDetailsError] = useState("");
+  const [customerSaleDetailsParent, setCustomerSaleDetailsParent] = useState(null);
 
   // ---- Bulk-select / delete state (same pattern as BOQ / PO Details) ----
   const [selectMode, setSelectMode] = useState(false);
@@ -581,8 +583,8 @@ export default function SaleRegister() {
 
   useEffect(() => {
     if (!modalOpen) return;
-    loadAvailableSerials({ modelId: formValues.modelId, model: formValues.model });
-  }, [modalOpen, formValues.modelId, formValues.model, loadAvailableSerials]);
+    loadAvailableSerials({ modelId: formValues.modelId, model: formValues.model, excludeSaleId: getRowId(customerSaleParent) });
+  }, [modalOpen, formValues.modelId, formValues.model, customerSaleParent, loadAvailableSerials]);
 
   useEffect(() => {
     if (!isEditingDetails || !detailsRow) return;
@@ -595,8 +597,29 @@ export default function SaleRegister() {
   }, [isEditingDetails, detailsRow, editValues.modelId, editValues.model, loadAvailableSerials]);
 
   const openDetails = (row) => {
+    setCustomerSaleDetailsParent(null);
     setDetailsRow(row);
     setEditValues(buildEditValues(row));
+    setIsEditingDetails(false);
+    setDetailsError("");
+    setDetailsClosing(false);
+    setDetailsOpen(true);
+  };
+
+  const openCustomerSale = (row) => {
+    setCustomerSaleParent(row);
+    setFormValues(emptySaleForm);
+    setFormError("");
+    setClosing(false);
+    setModalOpen(true);
+  };
+
+  const openCustomerSaleDetails = (row) => {
+    if (!row.customerSale) return;
+    const customerSale = { ...row.customerSale, id: getRowId(row) };
+    setCustomerSaleDetailsParent(row);
+    setDetailsRow(customerSale);
+    setEditValues(buildEditValues(customerSale));
     setIsEditingDetails(false);
     setDetailsError("");
     setDetailsClosing(false);
@@ -613,6 +636,7 @@ export default function SaleRegister() {
       setIsEditingDetails(false);
       setEditValues({});
       setDetailsError("");
+      setCustomerSaleDetailsParent(null);
     }, 200);
   }, [detailsClosing]);
 
@@ -712,7 +736,7 @@ export default function SaleRegister() {
     setDetailsError("");
 
     try {
-      const res = await api.put(`/sales/${id}`, {
+      const res = await api.put(customerSaleDetailsParent ? `/sales/${id}/customer-sale` : `/sales/${id}`, {
           ...editValues,
           date: editValues.date || editValues.clientPoDate,
           warrantyPeriod: editValues.warrantyPeriod ? Number(editValues.warrantyPeriod) : "",
@@ -723,6 +747,14 @@ export default function SaleRegister() {
       }
 
       const { success, message, ...updatedRow } = payload;
+
+      if (customerSaleDetailsParent) {
+        setRows((prev) => prev.map((row) => getRowId(row) === id ? { ...row, customerSale: payload.customerSale } : row));
+        setDetailsRow((prev) => ({ ...prev, ...payload.customerSale }));
+        setIsEditingDetails(false);
+        swalSuccess("Customer sale updated", "The customer sale has been updated successfully.");
+        return;
+      }
 
       setRows((prev) =>
         prev.map((r) => (getRowId(r) === id ? { ...r, ...updatedRow } : r))
@@ -820,6 +852,7 @@ export default function SaleRegister() {
       setClosing(false);
       setFormValues(emptySaleForm);
       setFormError("");
+      setCustomerSaleParent(null);
     }, 220);
   };
 
@@ -895,12 +928,15 @@ export default function SaleRegister() {
     setFormError("");
 
     try {
-      const res = await api.post("/sales", {
+      const payloadToSave = {
           ...formValues,
           date: formValues.date || formValues.clientPoDate,
           // Persist warranty period as a number of years, per spec.
           warrantyPeriod: formValues.warrantyPeriod ? Number(formValues.warrantyPeriod) : "",
-      });
+      };
+      const res = customerSaleParent
+        ? await api.put(`/sales/${getRowId(customerSaleParent)}/customer-sale`, payloadToSave)
+        : await api.post("/sales", payloadToSave);
       const payload = res.data;
       if (!payload.success) {
         throw new Error(payload.message || "Unable to save sale");
@@ -908,10 +944,10 @@ export default function SaleRegister() {
 
       // The blueprint returns { success, message, id, ...fields, createdAt, updatedAt } flat 
       // pull out just the row fields for the table, same pattern as DefectiveUnits.
-      await fetchRows({ targetPage: 1, silent: true });
-      setPage(1);
+      await fetchRows({ targetPage: customerSaleParent ? page : 1, silent: true });
+      if (!customerSaleParent) setPage(1);
       requestClose();
-      swalSuccess("Sale saved", "The sale has been saved successfully.");
+      swalSuccess(customerSaleParent ? "Customer sale saved" : "Sale saved", customerSaleParent ? "The customer sale has been saved successfully." : "The sale has been saved successfully.");
     } catch (err) {
       const msg = err.message || "Something went wrong while saving. Please try again.";
       setFormError(msg);
@@ -994,7 +1030,20 @@ export default function SaleRegister() {
   // Table columns with a checkbox column prepended only while selectMode
   // is active  mirrors the PO Details / BOQ pattern.
   const tableColumns = useMemo(() => {
-    if (!selectMode) return columns;
+    const customerSalesColumn = {
+      key: "customerSalesAction",
+      label: "Customer Sales",
+      render: (row) => row.customerSale ? (
+        <button type="button" className="data-table-view-btn" onClick={() => openCustomerSaleDetails(row)}>
+          <Pencil size={16} /> View
+        </button>
+      ) : (
+        <button type="button" className="data-table-view-btn" onClick={() => openCustomerSale(row)}>
+          <Plus size={16} /> Add Sales
+        </button>
+      ),
+    };
+    if (!selectMode) return [...columns, customerSalesColumn];
 
     const selectColumn = {
       key: "__select",
@@ -1014,7 +1063,7 @@ export default function SaleRegister() {
       },
     };
 
-    return [selectColumn, ...columns];
+    return [selectColumn, ...columns, customerSalesColumn];
   }, [selectMode, selectedIds]);
 
   return (
@@ -1198,10 +1247,10 @@ export default function SaleRegister() {
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label="Add Sale"
+            aria-label={customerSaleParent ? "Add Customer Sale" : "Add Sale"}
           >
             <div className="modal-header">
-              <h2>Add Sale</h2>
+              <h2>{customerSaleParent ? "Add Customer Sale" : "Add Sale"}</h2>
               <button type="button" className="modal-close" onClick={requestClose} aria-label="Close">
                 <X size={22} />
               </button>
@@ -1439,7 +1488,7 @@ export default function SaleRegister() {
             aria-label="Sale Details"
           >
             <div className="sale-details-header">
-              <h2>{isEditingDetails ? "Edit Sale" : "Sale Details"}</h2>
+              <h2>{isEditingDetails ? (customerSaleDetailsParent ? "Edit Customer Sale" : "Edit Sale") : (customerSaleDetailsParent ? "Customer Sale Details" : "Sale Details")}</h2>
               <div className="sale-details-header-actions">
                 {!isEditingDetails && (
                   <button

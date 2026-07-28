@@ -34,6 +34,7 @@ const KPI_DEFINITIONS = [
   { key: "defects", label: "Defective Units Reported", group: "outcome" },
   { key: "reorder", label: "Materials Below Min Stock", group: "outcome" },
 ];
+const EMPTY_SALES_DASHBOARD = { kpis: { sold: 0, salesValue: 0 } };
 
 const PRODUCTION_KPI_KEYS = new Set(["inProduction", "semiFinished", "qcInspection", "qcFailed", "qcPassed", "packed", "defects"]);
 const EMPTY_KPIS = {
@@ -87,8 +88,9 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const { role } = useAuth();
-  const dashboardCacheKey = `vector_dashboard_${role || "guest"}`;
+  const dashboardCacheKey = `vector_dashboard_v2_${role || "guest"}`;
   const isRegularUser = role === "user";
+  const isProductionIncharge = role === "production_incharge";
   const isProductionOnly = role === "user" || role === "production_incharge";
   const canViewSalesValue = role === "admin" || role === "coadmin";
   const [activeView, setActiveView] = useState(() => isProductionOnly ? "production" : "sales");
@@ -191,6 +193,10 @@ export default function Dashboard() {
   }, [isRegularUser, dashboardCacheKey]);
 
   const liveKpis = dashboard?.kpis || EMPTY_KPIS;
+  const salesDashboard = activeView === "customerSales"
+    ? (dashboard?.customerSales || EMPTY_SALES_DASHBOARD)
+    : dashboard;
+  const salesKpis = salesDashboard?.kpis || EMPTY_KPIS;
   const kpis = useMemo(
     () => KPI_DEFINITIONS.map((kpi) => ({ ...kpi, value: liveKpis[kpi.key] ?? 0 })),
     [liveKpis]
@@ -203,13 +209,13 @@ export default function Dashboard() {
     })),
     [dashboard, chartTheme]
   );
-  const salesValue = liveKpis.salesValue ?? 0;
+  const salesValue = salesDashboard?.kpis?.salesValue ?? 0;
   const isWithinDateRange = (period, fromDate, toDate) => {
     const normalized = String(period || "").slice(0, 10);
     return (!fromDate || normalized >= fromDate) && (!toDate || normalized <= toDate);
   };
   const locationSales = useMemo(() => {
-    const source = dashboard?.locationSalesByDay;
+    const source = salesDashboard?.locationSalesByDay;
     const totals = (source || []).reduce((result, item) => {
       const period = String(item.period || "");
       if (locationYear !== "all" && !period.startsWith(locationYear)) return result;
@@ -219,13 +225,14 @@ export default function Dashboard() {
       return result;
     }, {});
     return Object.entries(totals).map(([group, units]) => ({ group, units }));
-  }, [dashboard, locationYear, locationMonth]);
+  }, [salesDashboard, locationYear, locationMonth]);
+  const salesLocationCount = locationSales.length;
   const locationYears = useMemo(() => {
-    const years = new Set(["2025", ...(dashboard?.locationSalesByDay || []).map((item) => String(item.period || "").slice(0, 4)).filter(Boolean)]);
+    const years = new Set(["2025", ...(salesDashboard?.locationSalesByDay || []).map((item) => String(item.period || "").slice(0, 4)).filter(Boolean)]);
     return Array.from(years).sort((a, b) => b.localeCompare(a));
-  }, [dashboard]);
+  }, [salesDashboard]);
   const clientSales = useMemo(() => {
-    const totals = (dashboard?.clientSalesByDay || []).reduce((result, item) => {
+    const totals = (salesDashboard?.clientSalesByDay || []).reduce((result, item) => {
       const period = String(item.period || "");
       if (clientYear !== "all" && !period.startsWith(clientYear)) return result;
       if (clientMonth !== "all" && period.slice(5, 7) !== clientMonth) return result;
@@ -235,37 +242,39 @@ export default function Dashboard() {
     return Object.entries(totals)
       .map(([client, units]) => ({ client: client || "Unspecified", units }))
       .sort((a, b) => b.units - a.units || a.client.localeCompare(b.client));
-  }, [dashboard, clientYear, clientMonth]);
+  }, [salesDashboard, clientYear, clientMonth]);
   const clientSalesTotal = clientSales.reduce((total, item) => total + item.units, 0);
-  const hasUsefulClientSalesData = clientSales.length > 0 && clientSalesTotal >= 4;
+  const hasUsefulClientSalesData = activeView === "customerSales"
+    ? clientSales.length > 0
+    : clientSales.length > 0 && clientSalesTotal >= 4;
   const salesModels = useMemo(() => {
     // Include model names saved on sales as well as the master model list.
     // This keeps the trend visible for valid historical sales whose saved
     // model text does not exactly match the current master record.
-    const masterModels = dashboard?.modelNames || [];
-    const salesModelsFromData = (dashboard?.salesByModelMonth || []).map((item) => item.model);
+    const masterModels = salesDashboard?.modelNames || [];
+    const salesModelsFromData = (salesDashboard?.salesByModelMonth || []).map((item) => item.model);
     return Array.from(new Set([...masterModels, ...salesModelsFromData].filter(Boolean)))
       .sort((a, b) => String(a).localeCompare(String(b)));
-  }, [dashboard]);
+  }, [salesDashboard]);
   const visibleSalesModels = salesModel === "all" ? salesModels : salesModels.filter((model) => model === salesModel);
   const monthlyDispatchedTrend = useMemo(() => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const totals = Array(12).fill(0);
-    (dashboard?.salesByMonth || []).forEach((item) => {
+    (salesDashboard?.salesByMonth || []).forEach((item) => {
       const period = String(item.period || "");
       if (dispatchYear !== "all" && !period.startsWith(dispatchYear)) return;
       const monthIndex = Number(period.slice(5, 7)) - 1;
       if (monthIndex >= 0 && monthIndex < 12) totals[monthIndex] += Number(item.units || 0);
     });
     return monthNames.map((month, index) => ({ month, units: totals[index] }));
-  }, [dashboard, dispatchYear]);
+  }, [salesDashboard, dispatchYear]);
   const salesTrend = useMemo(() => {
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const rows = monthNames.map((month) => ({
       month,
       ...Object.fromEntries(visibleSalesModels.map((model) => [model, 0])),
     }));
-    (dashboard?.salesByModelMonth || []).forEach((item) => {
+    (salesDashboard?.salesByModelMonth || []).forEach((item) => {
       const period = String(item.period || "");
       if (modelYear !== "all" && !period.startsWith(modelYear)) return;
       if (salesModel !== "all" && item.model !== salesModel) return;
@@ -273,7 +282,7 @@ export default function Dashboard() {
       if (monthIndex >= 0 && monthIndex < 12) rows[monthIndex][item.model] = (rows[monthIndex][item.model] || 0) + Number(item.units || 0);
     });
     return rows;
-  }, [dashboard, modelYear, salesModel, visibleSalesModels]);
+  }, [salesDashboard, modelYear, salesModel, visibleSalesModels]);
   const dispatchedRealPointCount = monthlyDispatchedTrend.filter((item) => Number(item.units || 0) > 0).length;
   const modelTrendRealPointCount = salesTrend.filter((row) => visibleSalesModels.some((model) => Number(row[model] || 0) > 0)).length;
   const productionMonthCharts = useMemo(() => {
@@ -382,7 +391,8 @@ export default function Dashboard() {
           <h2 className="dashboard-page-heading">Production &amp; sales overview</h2>
         </div>
         <div className="dashboard-tabs" data-active={activeView} data-single={isProductionOnly} role="tablist" aria-label="Dashboard views">
-          {!isProductionOnly && <button className={`dashboard-tab${activeView === "sales" ? " active" : ""}`} onClick={() => setActiveView("sales")} role="tab" aria-selected={activeView === "sales"}><TrendingUp size={16} /> Sales</button>}
+          {!isProductionOnly && <button className={`dashboard-tab${activeView === "sales" ? " active" : ""}`} onClick={() => setActiveView("sales")} role="tab" aria-selected={activeView === "sales"}><TrendingUp size={16} /> Vector Sales</button>}
+          {!isProductionOnly && <button className={`dashboard-tab${activeView === "customerSales" ? " active" : ""}`} onClick={() => setActiveView("customerSales")} role="tab" aria-selected={activeView === "customerSales"}><TrendingUp size={16} /> Customer Sales</button>}
           <button className={`dashboard-tab${activeView === "production" ? " active" : ""}`} onClick={() => setActiveView("production")} role="tab" aria-selected={activeView === "production"}><Factory size={16} /> Production</button>
         </div>
       </header>
@@ -394,9 +404,9 @@ export default function Dashboard() {
             <article className="summary-card summary-card--hero summary-card--success"><div className="summary-card-content"><div><small>Quality clearance</small><strong>{dashboard?.qualityPassRate ?? 0}%</strong><em>Pass rate across all completed inspections</em></div><span className="summary-card-icon"><ShieldCheck size={22} /></span></div></article>
             <article className="summary-card summary-card--success"><span className="summary-card-icon"><Boxes size={19} /></span><div><small>Ready to dispatch</small><strong>{liveKpis.packed ?? 0} units</strong><em>{metricRelationships}</em></div></article>
           </> : <>
-            <div className="dashboard-hero-stat"><span className="dashboard-stat-icon"><TrendingUp size={18} /></span><div><small>Units sold</small><strong>{liveKpis.sold ?? 0} units</strong><em>Dispatched sales</em></div></div>
+            <div className="dashboard-hero-stat"><span className="dashboard-stat-icon"><TrendingUp size={18} /></span><div><small>Units sold</small><strong>{salesKpis.sold ?? 0} units</strong><em>Dispatched sales</em></div></div>
             <div className="dashboard-hero-stat"><span className="dashboard-stat-icon gold"><ArrowUpRight size={18} /></span><div><small>Sales value</small><strong>{canViewSalesValue ? formattedSalesValue : "Restricted"}</strong><em>Recorded sales total</em></div></div>
-            <div className="dashboard-hero-stat"><span className="dashboard-stat-icon"><MapPin size={18} /></span><div><small>Dispatch network</small><strong>{dashboard?.dispatchLocationCount ?? 0} cities</strong><em>Currently receiving shipments</em></div></div>
+            <div className="dashboard-hero-stat"><span className="dashboard-stat-icon"><MapPin size={18} /></span><div><small>Dispatch network</small><strong>{salesLocationCount} cities</strong><em>Currently receiving shipments</em></div></div>
           </>}
         </div>
         {activeView === "production" && <div className="snapshot-in-hero">
@@ -405,19 +415,20 @@ export default function Dashboard() {
       </section>
 
       {/* <div className="dashboard-toolbar">
-        <p className="dashboard-subtitle">{loadError ? "Live dashboard data is temporarily unavailable." : dashboard ? activeView === "production" ? "Live production, quality, and packing information." : "Live sales and dispatch information." : "Loading dashboard data..."}</p>
-        {activeView === "sales" && canViewSalesValue && <div className="dashboard-value-chip"><ArrowUpRight size={15} /> {formattedSalesValue} sales value</div>}
+        <p className="dashboard-subtitle">{loadError ? "Live dashboard data is temporarily unavailable." : dashboard ? activeView === "production" ? "Live production, quality, and packing information." : activeView === "customerSales" ? "Live customer sales and dispatch information." : "Live Vector sales and dispatch information." : "Loading dashboard data..."}</p>
+        {activeView !== "production" && canViewSalesValue && <div className="dashboard-value-chip"><ArrowUpRight size={15} /> {formattedSalesValue} sales value</div>}
       </div> */}
 
       {activeView === "production" && (<section className={`section${isRegularUser ? " user-production-dashboard" : ""}`} aria-labelledby="production-analytics-title">
         <div className="production-analytics-header"><div><p className="dashboard-eyebrow-label">Live reporting</p><h2 id="production-analytics-title" className="dashboard-section-title">Production analytics</h2></div><div className="dashboard-filter-bar">{productionFilterControls}</div></div>
-        <div className="chart-grid production-monthly-chart-grid">
+        <div className={`chart-grid production-monthly-chart-grid${isProductionIncharge ? " production-incharge-chart-grid" : ""}`}>
           <div ref={(node) => { chartRefs.current.monthlyAssembled = node; }} data-chart-key="monthlyAssembled" className={`panel chart-panel${expandedChart === "monthlyAssembled" ? " chart-panel-expanded" : ""}`}><div className="chart-heading"><div><span>Assembly output</span><h3 className="panel-title">Monthly units assembled</h3></div><div className="chart-heading-actions"><Factory size={18} /><button type="button" className="chart-expand-btn" onClick={() => toggleChartFullscreen("monthlyAssembled")} aria-label={expandedChart === "monthlyAssembled" ? "Exit fullscreen" : "Expand assembly chart"}>{expandedChart === "monthlyAssembled" ? <><Minimize2 size={16} /> <span>Exit Fullscreen</span></> : <Expand size={16} />}</button></div></div>{hasAssemblyData ? <ResponsiveContainer width="100%" height={expandedChart === "monthlyAssembled" ? 650 : 280}>{assemblyDataPoints.length < 3 ? <BarChart data={assemblyDataPoints} margin={{ top: 16, right: 16, left: 8, bottom: 20 }}><CartesianGrid stroke={chartTheme.grid} vertical={false} /><XAxis dataKey="month" label={{ value: "Month", position: "insideBottom", offset: -12, fill: chartTheme.axis, fontSize: 11 }} tick={{ fontSize: 11, fill: chartTheme.axis }} /><YAxis label={{ value: "Units", angle: -90, position: "insideLeft", fill: chartTheme.axis, fontSize: 11 }} allowDecimals={false} tick={{ fontSize: 11, fill: chartTheme.axis }} /><Tooltip contentStyle={chartTheme.tooltip} formatter={(value) => [value, "Assembled units"]} /><Bar dataKey="units" name="Assembled units" fill={chartTheme.accent} radius={[7, 7, 0, 0]} /></BarChart> : <LineChart data={assemblyDataPoints} margin={{ top: 16, right: 16, left: 8, bottom: 20 }}><CartesianGrid stroke={chartTheme.grid} vertical={false} /><XAxis dataKey="month" label={{ value: "Month", position: "insideBottom", offset: -12, fill: chartTheme.axis, fontSize: 11 }} tick={{ fontSize: 11, fill: chartTheme.axis }} /><YAxis label={{ value: "Units", angle: -90, position: "insideLeft", fill: chartTheme.axis, fontSize: 11 }} allowDecimals={false} tick={{ fontSize: 11, fill: chartTheme.axis }} /><Tooltip contentStyle={chartTheme.tooltip} formatter={(value) => [value, "Assembled units"]} /><Line type="monotone" dataKey="units" name="Assembled units" stroke={chartTheme.accent} strokeWidth={3} dot={{ r: 3, fill: chartTheme.accentHover }} activeDot={{ r: 6 }} /></LineChart>}</ResponsiveContainer> : chartEmptyState("assembly output")}</div>
           <div ref={(node) => { chartRefs.current.monthlyQc = node; }} data-chart-key="monthlyQc" className={`panel chart-panel${expandedChart === "monthlyQc" ? " chart-panel-expanded" : ""}`}><div className="chart-heading"><div><span>Quality control</span><h3 className="panel-title">Monthly QC status</h3></div><div className="chart-heading-actions"><ShieldCheck size={18} /><button type="button" className="chart-expand-btn" onClick={() => toggleChartFullscreen("monthlyQc")} aria-label={expandedChart === "monthlyQc" ? "Exit fullscreen" : "Expand quality control chart"}>{expandedChart === "monthlyQc" ? <><Minimize2 size={16} /> <span>Exit Fullscreen</span></> : <Expand size={16} />}</button></div></div>{hasQcData ? <ResponsiveContainer width="100%" height={expandedChart === "monthlyQc" ? 650 : 280}><BarChart data={productionMonthCharts.qc} margin={{ top: 16, right: 16, left: 8, bottom: 20 }}><CartesianGrid stroke={chartTheme.grid} vertical={false} /><XAxis dataKey="month" label={{ value: "Month", position: "insideBottom", offset: -12, fill: chartTheme.axis, fontSize: 11 }} tick={{ fontSize: 11, fill: chartTheme.axis }} /><YAxis label={{ value: "Units", angle: -90, position: "insideLeft", fill: chartTheme.axis, fontSize: 11 }} allowDecimals={false} tick={{ fontSize: 11, fill: chartTheme.axis }} /><Tooltip contentStyle={chartTheme.tooltip} /><Bar dataKey="Passed" stackId="qc" fill={chartTheme.success} /><Bar dataKey="Under Inspection" stackId="qc" fill={chartTheme.accent} /><Bar dataKey="Pending" stackId="qc" fill={chartTheme.muted} /><Bar dataKey="Failed" stackId="qc" fill={chartTheme.danger} /></BarChart></ResponsiveContainer> : chartEmptyState("quality control")}</div>
           <div ref={(node) => { chartRefs.current.monthlyPackaging = node; }} data-chart-key="monthlyPackaging" className={`panel chart-panel${expandedChart === "monthlyPackaging" ? " chart-panel-expanded" : ""}`}><div className="chart-heading"><div><span>Packaging</span><h3 className="panel-title">Monthly packaging status</h3></div><div className="chart-heading-actions"><Boxes size={18} /><button type="button" className="chart-expand-btn" onClick={() => toggleChartFullscreen("monthlyPackaging")} aria-label={expandedChart === "monthlyPackaging" ? "Exit fullscreen" : "Expand packaging chart"}>{expandedChart === "monthlyPackaging" ? <><Minimize2 size={16} /> <span>Exit Fullscreen</span></> : <Expand size={16} />}</button></div></div>{hasPackagingData ? <ResponsiveContainer width="100%" height={expandedChart === "monthlyPackaging" ? 650 : 280}><BarChart data={productionMonthCharts.packaged} margin={{ top: 16, right: 16, left: 8, bottom: 20 }}><CartesianGrid stroke={chartTheme.grid} vertical={false} /><XAxis dataKey="month" label={{ value: "Month", position: "insideBottom", offset: -12, fill: chartTheme.axis, fontSize: 11 }} tick={{ fontSize: 11, fill: chartTheme.axis }} /><YAxis label={{ value: "Units", angle: -90, position: "insideLeft", fill: chartTheme.axis, fontSize: 11 }} allowDecimals={false} tick={{ fontSize: 11, fill: chartTheme.axis }} /><Tooltip contentStyle={chartTheme.tooltip} /><Bar dataKey="Pending" stackId="pack" fill={chartTheme.muted} /><Bar dataKey="In Progress" stackId="pack" fill={chartTheme.warning} /><Bar dataKey="Packed" stackId="pack" fill={chartTheme.success} /></BarChart></ResponsiveContainer> : chartEmptyState("packaging")}</div>
+          {isProductionIncharge && renderDefectiveItemsChart("quality")}
         </div>
-        <div className={`chart-grid ${activeView === "sales" ? "sales-chart-grid" : "production-chart-grid"}`}>
-          {!isRegularUser && <div ref={(node) => { chartRefs.current.workload = node; }} data-chart-key="workload" className={`panel chart-panel${expandedChart === "workload" ? " chart-panel-expanded" : ""}`}>
+        <div className={`chart-grid ${activeView !== "production" ? "sales-chart-grid" : "production-chart-grid"}`}>
+          {!isRegularUser && !isProductionIncharge && <div ref={(node) => { chartRefs.current.workload = node; }} data-chart-key="workload" className={`panel chart-panel${expandedChart === "workload" ? " chart-panel-expanded" : ""}`}>
             <div className="chart-heading"><div><span>{activeView === "production" ? "User activity" : "Distribution"}</span><h3 className="panel-title">{activeView === "production" ? `${userActivity === "assembled" ? "Assembled" : userActivity === "packaged" ? "Packaged" : "QC tested"} by user` : "Units dispatched by location"}</h3></div><div className="chart-heading-actions">{activeView === "production" ? <><div className="dashboard-range-switch chart-range-switch"><button type="button" className={userActivity === "assembled" ? "active" : ""} onClick={() => setUserActivity("assembled")}>Assembled</button><button type="button" className={userActivity === "qc" ? "active" : ""} onClick={() => setUserActivity("qc")}>QC</button><button type="button" className={userActivity === "packaged" ? "active" : ""} onClick={() => setUserActivity("packaged")}>Packaged</button></div><div className="dashboard-range-switch chart-range-switch"><button type="button" className={qcRange === "daily" ? "active" : ""} onClick={() => setQcRange("daily")}>Daily</button><button type="button" className={qcRange === "weekly" ? "active" : ""} onClick={() => setQcRange("weekly")}>Weekly</button></div><Factory size={18} /></> : <MapPin size={18} />}<button type="button" className="chart-expand-btn" onClick={() => toggleChartFullscreen("workload")} aria-label={expandedChart === "workload" ? "Exit fullscreen" : "Expand chart"}>{expandedChart === "workload" ? <><Minimize2 size={16} /> <span>Exit Fullscreen</span></> : <Expand size={16} />}</button></div></div>
             {activeView === "production" && <div className="chart-filter-row">{!isRegularUser && <DashboardFilterSelect label="User" value={qcUserFilter} onChange={setQcUserFilter} options={[{ value: "all", label: "All users" }, ...qcUsers.map((user) => ({ value: user, label: user }))]} />}<div className="chart-date-filter"><label>From <DatePicker value={qcFromDate} onChange={setQcFromDate} ariaLabel="Select filter start date" /></label><label>To <DatePicker value={qcToDate} onChange={setQcToDate} ariaLabel="Select filter end date" /></label></div><button type="button" className="chart-clear-filter" onClick={() => { setQcRange("daily"); setQcUserFilter("all"); setQcFromDate(""); setQcToDate(""); }}>Clear filters</button></div>}
             <div className="chart-scroll"><div className="chart-scroll-inner" style={{ width: (activeView === "production" ? qcUserData : locationSales).length > 8 ? `${(activeView === "production" ? qcUserData : locationSales).length * 92}px` : "100%" }}><ResponsiveContainer width="100%" height={expandedChart === "workload" ? 650 : 280}>
@@ -439,9 +450,9 @@ export default function Dashboard() {
             </ResponsiveContainer></div></div>
           </div>}
 
-          {renderDefectiveItemsChart("quality")}
+          {!isProductionIncharge && renderDefectiveItemsChart("quality")}
 
-          {!isRegularUser && <div ref={(node) => { chartRefs.current.location = node; }} data-chart-key="location" className={`panel chart-panel${expandedChart === "location" ? " chart-panel-expanded" : ""}`}>
+          {!isRegularUser && !isProductionIncharge && <div ref={(node) => { chartRefs.current.location = node; }} data-chart-key="location" className={`panel chart-panel${expandedChart === "location" ? " chart-panel-expanded" : ""}`}>
             <div className="chart-heading"><div><span>Distribution</span><h3 className="panel-title">Units dispatched by location</h3></div><div className="chart-heading-actions"><DashboardFilterSelect label="Year" value={locationYear} onChange={setLocationYear} options={[{ value: "all", label: "All years" }, ...locationYears.map((year) => ({ value: year, label: year }))]} /><DashboardFilterSelect label="Month" value={locationMonth} onChange={setLocationMonth} options={[{ value: "all", label: "All months" }, ...["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((month, index) => ({ value: String(index + 1).padStart(2, "0"), label: month }))]} /><button type="button" className="chart-clear-filter" onClick={() => { setLocationYear("all"); setLocationMonth("all"); }}>Clear filters</button><MapPin size={18} /><button type="button" className="chart-expand-btn" onClick={() => toggleChartFullscreen("location")} aria-label={expandedChart === "location" ? "Exit fullscreen" : "Expand chart"}>{expandedChart === "location" ? <><Minimize2 size={16} /> <span>Exit Fullscreen</span></> : <Expand size={16} />}</button></div></div>
             <div className="chart-scroll"><div className="chart-scroll-inner" style={{ width: locationSales.length > 8 ? `${locationSales.length * 92}px` : "100%" }}><ResponsiveContainer width="100%" height={expandedChart === "location" ? 650 : 280}>
               <BarChart data={locationSales} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}><CartesianGrid stroke={chartTheme.grid} vertical={false} /><XAxis dataKey="group" tick={{ fontSize: 11, fill: chartTheme.axis }} interval={0} /><YAxis tick={{ fontSize: 11, fill: chartTheme.axis }} allowDecimals={false} /><Tooltip contentStyle={chartTheme.tooltip} cursor={{ fill: chartTheme.cursor }} /><Bar dataKey="units" radius={[7, 7, 0, 0]}>{locationSales.map((entry, index) => <Cell key={`${entry.group}-${index}`} fill={getContrastBarColor(index, chartTheme)} fillOpacity={getBarColorOpacity(index)} />)}</Bar></BarChart>
@@ -449,21 +460,21 @@ export default function Dashboard() {
           </div>}
         </div>
       </section>)}
-      {activeView === "sales" && <section className="section sales-analytics-section">
+      {(activeView === "sales" || activeView === "customerSales") && <section className="section sales-analytics-section">
         
         <div className="chart-grid sales-chart-grid">
-          <div ref={(node) => { chartRefs.current.salesClient = node; }} data-chart-key="salesClient" className={`panel chart-panel${expandedChart === "salesClient" ? " chart-panel-expanded" : ""}`}>
+          {activeView !== "sales" && <div ref={(node) => { chartRefs.current.salesClient = node; }} data-chart-key="salesClient" className={`panel chart-panel${expandedChart === "salesClient" ? " chart-panel-expanded" : ""}`}>
             <div className="chart-heading"><div><span>Sales distribution</span><h3 className="panel-title">Units dispatched by client</h3></div><div className="chart-heading-actions"><DashboardFilterSelect label="Year" value={clientYear} onChange={setClientYear} options={[{ value: "all", label: "All years" }, ...locationYears.map((year) => ({ value: year, label: year }))]} /><DashboardFilterSelect label="Month" value={clientMonth} onChange={setClientMonth} options={[{ value: "all", label: "All months" }, ...["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].map((month, index) => ({ value: String(index + 1).padStart(2, "0"), label: month }))]} /><button type="button" className="chart-clear-filter" onClick={() => { setClientYear("all"); setClientMonth("all"); }}>Clear filters</button><button type="button" className="chart-expand-btn" onClick={() => toggleChartFullscreen("salesClient")} aria-label={expandedChart === "salesClient" ? "Exit fullscreen" : "Expand to see full details"} title="Expand to see full details">{expandedChart === "salesClient" ? <><Minimize2 size={16} /> <span>Exit Fullscreen</span></> : <Expand size={16} />}</button></div></div>
             {hasUsefulClientSalesData ? <><div className="chart-scroll"><div className="chart-scroll-inner" style={{ width: clientSales.length > 8 ? `${clientSales.length * 92}px` : "100%" }}><ResponsiveContainer width="100%" height={expandedChart === "salesClient" ? 650 : 280}><BarChart data={clientSales} margin={{ top: 8, right: 8, left: 6, bottom: 18 }}><CartesianGrid stroke={chartTheme.grid} vertical={false} /><XAxis dataKey="client" label={{ value: "Client", position: "insideBottom", offset: -10, fill: chartTheme.axis, fontSize: 11 }} tick={{ fontSize: 11, fill: chartTheme.axis }} interval={0} /><YAxis label={{ value: "Units", angle: -90, position: "insideLeft", fill: chartTheme.axis, fontSize: 11 }} tick={{ fontSize: 11, fill: chartTheme.axis }} allowDecimals={false} /><Tooltip contentStyle={chartTheme.tooltip} formatter={(value) => [value, "Units dispatched"]} cursor={{ fill: chartTheme.cursor }} /><Bar dataKey="units" radius={[7, 7, 0, 0]}>{clientSales.map((entry, index) => <Cell key={`${entry.client}-${index}`} fill={getContrastBarColor(index, chartTheme)} fillOpacity={getBarColorOpacity(index)} />)}</Bar></BarChart></ResponsiveContainer></div></div></> : <div className="dashboard-empty-chart dashboard-low-data"><span aria-hidden="true">▥</span><strong>{clientSales.length ? "Not enough activity yet this period" : "No dispatch activity yet"}</strong><p>{clientSales.length ? "Record at least four dispatched units to reveal a meaningful client comparison." : "Client dispatches will appear here once sales are recorded."}</p></div>}
-          </div>
+          </div>}
           <div ref={(node) => { chartRefs.current.salesDispatchTrend = node; }} data-chart-key="salesDispatchTrend" className={`panel chart-panel${expandedChart === "salesDispatchTrend" ? " chart-panel-expanded" : ""}`}>
             <div className="chart-heading"><div><span>Dispatch trend</span><h3 className="panel-title">Monthly dispatched units</h3></div><div className="chart-heading-actions"><DashboardFilterSelect label="Year" value={dispatchYear} onChange={setDispatchYear} options={[{ value: "all", label: "All years" }, ...locationYears.map((year) => ({ value: year, label: year }))]} /><button type="button" className="chart-clear-filter" onClick={() => setDispatchYear("all")}>Clear filters</button><button type="button" className="chart-expand-btn" onClick={() => toggleChartFullscreen("salesDispatchTrend")} aria-label={expandedChart === "salesDispatchTrend" ? "Exit fullscreen" : "Expand to see full details"} title="Expand to see full details">{expandedChart === "salesDispatchTrend" ? <><Minimize2 size={16} /> <span>Exit Fullscreen</span></> : <Expand size={16} />}</button></div></div>
             <ResponsiveContainer width="100%" height={expandedChart === "salesDispatchTrend" ? 650 : 280}>{dispatchedRealPointCount < 3 ? <BarChart data={monthlyDispatchedTrend} margin={{ top: 12, right: 18, left: 0, bottom: 4 }}><CartesianGrid stroke={chartTheme.grid} vertical={false} /><XAxis dataKey="month" tick={{ fontSize: 11, fill: chartTheme.axis }} /><YAxis tick={{ fontSize: 11, fill: chartTheme.axis }} allowDecimals={false} /><Tooltip contentStyle={chartTheme.tooltip} /><Bar dataKey="units" name="Dispatched units" fill={chartTheme.accentActive} radius={[7, 7, 0, 0]} /></BarChart> : <LineChart data={monthlyDispatchedTrend} margin={{ top: 12, right: 18, left: 0, bottom: 4 }}><CartesianGrid stroke={chartTheme.grid} vertical={false} /><XAxis dataKey="month" tick={{ fontSize: 11, fill: chartTheme.axis }} /><YAxis tick={{ fontSize: 11, fill: chartTheme.axis }} allowDecimals={false} /><Tooltip contentStyle={chartTheme.tooltip} /><Line type="linear" dataKey="units" name="Dispatched units" stroke={chartTheme.accentActive} strokeWidth={3} dot={{ r: 4, fill: chartTheme.accent, stroke: chartTheme.surface, strokeWidth: 2 }} activeDot={{ r: 6 }} /></LineChart>}</ResponsiveContainer>
           </div>
-          <div ref={(node) => { chartRefs.current.salesModelTrend = node; }} data-chart-key="salesModelTrend" className={`panel chart-panel${expandedChart === "salesModelTrend" ? " chart-panel-expanded" : ""}`}>
+          {activeView !== "customerSales" && <div ref={(node) => { chartRefs.current.salesModelTrend = node; }} data-chart-key="salesModelTrend" className={`panel chart-panel${expandedChart === "salesModelTrend" ? " chart-panel-expanded" : ""}`}>
             <div className="chart-heading"><div><span>Sales trend</span><h3 className="panel-title">Monthly units by model</h3></div><div className="chart-heading-actions"><DashboardFilterSelect label="Year" value={modelYear} onChange={setModelYear} options={[{ value: "all", label: "All years" }, ...locationYears.map((year) => ({ value: year, label: year }))]} /><DashboardFilterSelect label="Model" value={salesModel} onChange={setSalesModel} options={[{ value: "all", label: "All models" }, ...salesModels.map((model) => ({ value: model, label: model }))]} /><button type="button" className="chart-clear-filter" onClick={() => { setModelYear("all"); setSalesModel("all"); }}>Clear filters</button><button type="button" className="chart-expand-btn" onClick={() => toggleChartFullscreen("salesModelTrend")} aria-label={expandedChart === "salesModelTrend" ? "Exit fullscreen" : "Expand to see full details"} title="Expand to see full details">{expandedChart === "salesModelTrend" ? <><Minimize2 size={16} /> <span>Exit Fullscreen</span></> : <Expand size={16} />}</button></div></div>
             <ResponsiveContainer width="100%" height={expandedChart === "salesModelTrend" ? 650 : 280}>{modelTrendRealPointCount < 3 ? <BarChart data={salesTrend} margin={{ top: 12, right: 18, left: 0, bottom: 4 }}><CartesianGrid stroke={chartTheme.grid} vertical={false} /><XAxis dataKey="month" tick={{ fontSize: 11, fill: chartTheme.axis }} /><YAxis tick={{ fontSize: 11, fill: chartTheme.axis }} allowDecimals={false} /><Tooltip contentStyle={chartTheme.tooltip} /><Legend />{visibleSalesModels.map((model) => { const modelIndex = salesModels.indexOf(model); return <Bar key={model} dataKey={model} name={model} fill={chartTheme.palette[modelIndex % chartTheme.palette.length]} radius={[5, 5, 0, 0]} />; })}</BarChart> : <LineChart data={salesTrend} margin={{ top: 12, right: 18, left: 0, bottom: 4 }}><CartesianGrid stroke={chartTheme.grid} vertical={false} /><XAxis dataKey="month" tick={{ fontSize: 11, fill: chartTheme.axis }} /><YAxis tick={{ fontSize: 11, fill: chartTheme.axis }} allowDecimals={false} /><Tooltip contentStyle={chartTheme.tooltip} /><Legend />{visibleSalesModels.map((model) => { const modelIndex = salesModels.indexOf(model); const color = chartTheme.palette[modelIndex % chartTheme.palette.length]; return <Line key={model} type="linear" dataKey={model} name={model} stroke={color} strokeWidth={salesModel === "all" ? 2 : 3} connectNulls={false} dot={salesModel === "all" ? false : { r: 3, fill: color, strokeWidth: 0 }} activeDot={{ r: 6 }} />; })}</LineChart>}</ResponsiveContainer>
-          </div>
+          </div>}
         </div>
       </section>}
     </div>
