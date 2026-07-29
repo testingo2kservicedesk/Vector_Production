@@ -10,10 +10,11 @@
 }
 
 .model-heading {
-  font-family: "Oswald", "Inter", sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 20px;
   margin: 0;
   color: var(--text-primary);
+  font-weight: 700;
 }
 
 .create-btn {
@@ -22,43 +23,38 @@
   gap: 7px;
   padding: 10px 20px;
   border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), var(--accent));
+  border-radius: var(--r-md);
+  background: var(--accent);
   color: var(--accent-contrast);
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: var(--shadow-md);
-  transition: transform 150ms ease, box-shadow 150ms ease;
+  transition: background 0.15s ease;
 }
-
-
 
 .create-btn:hover {
-  transform: translateY(-1px);
-  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  background: var(--accent-hover);
 }
 
-
 .delete-button {
-      display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 18px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--bg-surface);
-    color: var(--text-secondary);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 150ms ease, border-color 150ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
 .delete-button:hover {
-    background: var(--bg-table-stripe);
-    border-color: var(--accent);
-    color: var(--accent);
+  background: var(--bg-table-stripe);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .model-grid {
@@ -70,7 +66,7 @@
 .model-card {
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   min-height: 112px;
   padding: 14px 12px;
   display: flex;
@@ -79,13 +75,12 @@
   gap: 5px;
   cursor: pointer;
   text-align: left;
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.15s ease, transform 0.1s ease;
+  position: relative;
+  transition: border-color 0.15s ease;
 }
 
 .model-card:hover {
   border-color: var(--accent);
-  transform: translateY(-2px);
 }
 
 .model-card-heading-row {
@@ -99,7 +94,7 @@
 .model-card-icon {
   width: 32px;
   height: 32px;
-  border-radius: 9px;
+  border-radius: var(--r-sm);
   background: var(--accent-soft-bg);
   color: var(--accent);
   display: flex;
@@ -108,7 +103,7 @@
 }
 
 .model-card-name {
-  font-family: "Oswald", "Inter", sans-serif;
+  font-family: "Inter", sans-serif;
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
@@ -118,25 +113,10 @@
   white-space: nowrap;
 }
 
-.model-card-meta {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.model-loading,
-.model-error {
-  margin: 0 0 14px;
-  font-size: 13px;
-}
-
-.model-error {
-  color: var(--accent);
-}
-
-.model-card-time {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
+.model-card-meta { font-size: 12px; color: var(--text-secondary); }
+.model-loading, .model-error { margin: 0 0 14px; font-size: 13px; }
+.model-error { color: var(--accent); }
+.model-card-time { font-size: 11px; color: var(--text-secondary); }
 
 .model-card-add {
   align-items: center;
@@ -158,49 +138,7 @@
   flex-wrap: wrap;
 }
 
-.create-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.model-card {
-  position: relative;
-}
-
-.model-card-checkbox {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-  accent-color: var(--accent);
-}
-
-.model-card-selected {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--accent-soft-bg);
-}
-
-.model-toolbar-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  margin-left: auto;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.create-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none;
-}
-
-.model-card {
-  position: relative;
-}
+.create-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
 .model-card-checkbox {
   position: absolute;
@@ -228,7 +166,7 @@
   align-items: center;
   justify-content: center;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -236,24 +174,12 @@
   opacity: 0;
 }
 
-.model-card:hover .model-card-edit {
-  opacity: 1;
-}
+.model-card:hover .model-card-edit { opacity: 1; }
+.model-card-select-mode .model-card-edit { display: none; }
+.model-card-edit:hover { background: var(--accent-soft-bg); color: var(--accent); }
 
-.model-card-select-mode .model-card-edit {
-  display: none;
-}
-
-.model-card-edit:hover {
-  background: var(--accent-soft-bg);
-  color: var(--accent);
-}
-
-/* Kebab menu - hidden on desktop by default */
-.model-kebab-wrapper {
-  position: relative;
-  display: none;
-}
+/* Kebab menu */
+.model-kebab-wrapper { position: relative; display: none; }
 
 .model-kebab-btn {
   display: inline-flex;
@@ -262,16 +188,14 @@
   width: 38px;
   height: 38px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
   transition: border-color 0.15s ease;
 }
 
-.model-kebab-btn:hover {
-  border-color: var(--accent);
-}
+.model-kebab-btn:hover { border-color: var(--accent); }
 
 .model-kebab-menu {
   position: absolute;
@@ -280,7 +204,7 @@
   min-width: 190px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   box-shadow: var(--shadow-md);
   padding: 6px;
   display: flex;
@@ -297,7 +221,7 @@
   padding: 9px 10px;
   border: none;
   background: transparent;
-  border-radius: 7px;
+  border-radius: var(--r-sm);
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
@@ -306,85 +230,35 @@
   white-space: nowrap;
 }
 
-.model-menu-item:hover {
-  background: var(--accent-soft-bg);
-  color: var(--accent);
-}
+.model-menu-item:hover { background: var(--accent-soft-bg); color: var(--accent); }
+.model-menu-item:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.model-menu-item:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ======================================================
-   SWEETALERT2 THEME OVERRIDES (this popup renders outside
-   the React tree, so it needs its own font/radius rules)
-====================================================== */
-
+/* SWEETALERT2 THEME OVERRIDES */
 .swal-vector-popup {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   border-radius: 16px !important;
 }
-
-.swal-vector-popup .swal2-title {
-  font-family: "Poppins", "Inter", sans-serif;
-  font-size: 19px;
-}
-
-.swal-vector-popup .swal2-html-container {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
+.swal-vector-popup .swal2-title { font-size: 19px; }
+.swal-vector-popup .swal2-html-container { font-size: 14px; color: var(--text-secondary); }
 .swal-vector-popup .swal2-confirm,
-.swal-vector-popup .swal2-cancel {
-  border-radius: 10px !important;
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  padding: 10px 20px !important;
-  box-shadow: none !important;
-}
+.swal-vector-popup .swal2-cancel { border-radius: var(--r-md) !important; font-weight: 600 !important; font-size: 14px !important; padding: 10px 20px !important; box-shadow: none !important; }
+.swal-vector-popup .swal2-icon.swal2-warning { border-color: var(--accent); color: var(--accent); }
+.swal-vector-popup .swal2-icon.swal2-success [class^="swal2-success-line"] { background-color: var(--accent); }
+.swal-vector-popup .swal2-icon.swal2-success .swal2-success-ring { border-color: var(--danger); }
 
-.swal-vector-popup .swal2-icon.swal2-warning {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.swal-vector-popup .swal2-icon.swal2-success [class^="swal2-success-line"] {
-  background-color: var(--accent);
-}
-
-.swal-vector-popup .swal2-icon.swal2-success .swal2-success-ring {
-  border-color: var(--danger);
-}
-
-/* Mobile breakpoint: swap full buttons for kebab menu */
 @media (max-width: 640px) {
-  .model-toolbar-actions {
-    display: none;
-  }
-  .model-kebab-wrapper {
-    display: block;
-    margin-left: auto;
-    flex: 0 0 auto;
-  }
+  .model-toolbar-actions { display: none; }
+  .model-kebab-wrapper { display: block; margin-left: auto; flex: 0 0 auto; }
 }
 
-
-@media (max-width: 1024px) {
-  .model-grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 520px) {
-  .model-grid { grid-template-columns: 1fr; }
-}
+@media (max-width: 1024px) { .model-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .model-grid { grid-template-columns: 1fr; } }
 
 .model-readonly .model-toolbar-actions,
 .model-readonly .boq-toolbar-actions,
 .model-readonly .model-kebab-wrapper,
 .model-readonly .model-card-edit,
-.model-readonly .model-card-checkbox {
-  display: none !important;
-}
+.model-readonly .model-card-checkbox { display: none !important; }
 
 .model-readonly-badge {
   display: inline-flex;

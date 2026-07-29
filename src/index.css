@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 body {
   margin: 0;
-  font-family: "Manrope", sans-serif;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--bg-page);
@@ -30,23 +30,21 @@ textarea {
   font: inherit;
 }
 
-/* Keep every screen, modal, table, and form on the same application font. */
 #root,
 #root * {
-  font-family: "Manrope", sans-serif;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-/* SweetAlert rename dialogs should use the same warm accent as application forms. */
 .swal-vector-popup .swal2-input {
   width: calc(100% - 2em);
-  height: 44px;
+  height: 40px;
   margin: 0.5em auto 0;
-  padding: 0 14px;
+  padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   color: var(--text-primary);
-  font-family: "Poppins", sans-serif;
-  font-size: 13.5px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
   box-shadow: none;
 }
 

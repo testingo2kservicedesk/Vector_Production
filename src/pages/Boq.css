@@ -1,8 +1,4 @@
-﻿.boq-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+﻿.boq-page { display: flex; flex-direction: column; gap: 16px; }
 
 .boq-toolbar {
   display: flex;
@@ -21,11 +17,7 @@
   flex-wrap: wrap;
 }
 
-.boq-subtitle {
-  margin: 4px 0 0;
-  color: var(--text-secondary);
-  font-size: 13px;
-}
+.boq-subtitle { margin: 4px 0 0; color: var(--text-secondary); font-size: 13px; }
 
 .boq-search-row {
   display: flex;
@@ -35,11 +27,7 @@
   flex-wrap: wrap;
 }
 
-.boq-count {
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 600;
-}
+.boq-count { color: var(--text-secondary); font-size: 12px; font-weight: 600; }
 
 .boq-pagination {
   display: flex;
@@ -49,11 +37,7 @@
   margin-top: 12px;
 }
 
-.boq-hint {
-  color: var(--text-secondary);
-  font-size: 12px;
-  margin: 0;
-}
+.boq-hint { color: var(--text-secondary); font-size: 12px; margin: 0; }
 
 .boq-pagination-controls {
   display: inline-flex;
@@ -61,9 +45,8 @@
   gap: 2px;
   padding: 4px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-lg);
   background: var(--bg-surface);
-  box-shadow: var(--shadow-sm);
   width: fit-content;
   flex-wrap: wrap;
 }
@@ -76,7 +59,7 @@
   min-width: 34px;
   height: 34px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   border: none;
   background: transparent;
   color: var(--text-primary);
@@ -86,23 +69,10 @@
   transition: background 150ms ease, color 150ms ease;
 }
 
-.boq-page-btn:hover:not(:disabled) {
-  background: var(--bg-table-stripe);
-  color: var(--accent);
-}
-
-.boq-page-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.boq-page-nav {
-  font-weight: 700;
-}
-
-.boq-page-edge {
-  color: var(--text-secondary);
-}
+.boq-page-btn:hover:not(:disabled) { background: var(--bg-table-stripe); color: var(--accent); }
+.boq-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.boq-page-nav { font-weight: 700; }
+.boq-page-edge { color: var(--text-secondary); }
 
 .boq-page-current {
   display: inline-flex;
@@ -111,24 +81,17 @@
   min-width: 36px;
   height: 34px;
   padding: 0 12px;
-  border-radius: 8px;
-  background: linear-gradient(135deg, var(--accent), var(--accent));
-  color: var(--text-primary);
+  border-radius: var(--r-sm);
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-size: 13px;
   font-weight: 700;
-  box-shadow: var(--shadow-sm);
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.boq-page-current:hover {
-  transform: translateY(-1px) scale(1.05);
-  box-shadow: var(--shadow-sm);
 }
 
 .boq-empty {
   background: var(--bg-surface);
   border: 1px dashed var(--border);
-  border-radius: 16px;
+  border-radius: var(--r-xl);
   padding: 32px 20px;
   display: flex;
   flex-direction: column;
@@ -138,17 +101,8 @@
   color: var(--text-secondary);
 }
 
-.boq-empty h3 {
-  margin: 0;
-  color: var(--text-primary);
-  font-family: "Oswald", "Inter", sans-serif;
-  font-size: 20px;
-}
-
-.boq-empty p {
-  margin: 0;
-  max-width: 420px;
-}
+.boq-empty h3 { margin: 0; color: var(--text-primary); font-size: 20px; font-weight: 700; }
+.boq-empty p { margin: 0; max-width: 420px; }
 
 .table-export-bar {
   display: flex;
@@ -159,23 +113,9 @@
   flex-wrap: wrap;
 }
 
-/* ======================================================
-   NOTE: .modal-overlay, .modal-container, .modal-header,
-   .modal-close, .modal-footer, and the shared @keyframes
-   now live in styles/modal-theme.css  removed from here
-   to avoid duplicate/conflicting rules across pages.
-====================================================== */
+.boq-form-subtitle { margin: 2px 0 0; font-size: 13px; color: var(--text-secondary); }
 
-.boq-form-subtitle {
-  margin: 2px 0 0;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-/* ======================================================
-   BOQ FORM  matches .po-form / .po-form-grid conventions
-====================================================== */
-
+/* BOQ FORM */
 .boq-form-scroll {
   padding: 22px 24px;
   overflow-y: auto;
@@ -192,20 +132,17 @@
   border: 1px solid var(--accent-soft-border);
   color: var(--accent);
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   font-size: 13px;
   font-weight: 600;
   margin: 0 0 16px;
 }
 
-/* ------------------------------------------------------
-   ITEM CARDS
------------------------------------------------------- */
-
+/* ITEM CARDS */
 .boq-item-card {
   background: var(--bg-table-stripe);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   padding: 16px 18px 18px;
   margin-bottom: 16px;
 }
@@ -232,27 +169,15 @@
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-secondary);
-  border-radius: 8px;
+  border-radius: var(--r-sm);
   padding: 8px;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
-.icon-btn:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.icon-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.boq-item-remove:hover:not(:disabled) {
-  background: var(--accent-soft-bg);
-  border-color: var(--accent-soft-border);
-  color: var(--accent);
-}
+.icon-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.icon-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.boq-item-remove:hover:not(:disabled) { background: var(--accent-soft-bg); border-color: var(--accent-soft-border); color: var(--accent); }
 
 .link-btn {
   display: inline-flex;
@@ -267,18 +192,10 @@
   padding: 4px 0;
 }
 
-.boq-add-item-btn {
-  margin-top: 4px;
-}
+.boq-add-item-btn { margin-top: 4px; }
 
-/* ------------------------------------------------------
-   FIELD GRID  4 columns, exactly like .po-form-grid
------------------------------------------------------- */
-
-.boq-field-grid,
-.boq-field-grid * {
-  box-sizing: border-box;
-}
+/* FIELD GRID */
+.boq-field-grid, .boq-field-grid * { box-sizing: border-box; }
 
 .boq-field-grid {
   display: grid;
@@ -288,9 +205,7 @@
   width: 100%;
 }
 
-.boq-field-wide {
-  grid-column: span 2;
-}
+.boq-field-wide { grid-column: span 2; }
 
 .boq-field {
   display: flex;
@@ -316,26 +231,15 @@
   letter-spacing: normal;
   color: var(--text-primary);
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--bg-surface);
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
 
-.boq-field input::placeholder {
-  color: var(--text-secondary);
-  font-weight: 400;
-}
-
-.boq-field input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft-bg);
-}
-
-.boq-field input.mono {
-  font-family: "SFMono-Regular", Consolas, monospace;
-}
+.boq-field input::placeholder { color: var(--text-secondary); font-weight: 400; }
+.boq-field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft-bg); }
+.boq-field input.mono { font-family: "SFMono-Regular", Consolas, monospace; }
 
 .boq-readonly-field,
 .boq-field input:disabled,
@@ -345,54 +249,30 @@
   cursor: not-allowed;
 }
 
-/* ------------------------------------------------------
-   ACTION BUTTONS (Save / Cancel)  same as .po-btn-primary/secondary
------------------------------------------------------- */
-
-
-
-
+/* ACTION BUTTONS */
 .create-btn:hover:not(:disabled),
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-}
-
-.create-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-  transform: none;
-}
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.create-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
 
 .btn-secondary {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 10px 18px;
-  border-radius: 10px;
+  border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--bg-surface);
   color: var(--text-secondary);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 150ms ease, border-color 150ms ease;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
-.btn-secondary:hover {
-  background: var(--bg-table-stripe);
-  border-color: var(--accent);
-  color: var(--accent);
-}
+.btn-secondary:hover { background: var(--bg-table-stripe); border-color: var(--accent); color: var(--accent); }
 
-/* ------------------------------------------------------
-   MOBILE KEBAB MENU (Edit/Add BOQ + Delete on small screens)
------------------------------------------------------- */
-
-.model-kebab-wrapper {
-  position: relative;
-  display: none;
-}
+/* MOBILE KEBAB MENU */
+.model-kebab-wrapper { position: relative; display: none; }
 
 .model-kebab-btn {
   display: inline-flex;
@@ -401,16 +281,14 @@
   width: 38px;
   height: 38px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
   transition: border-color 0.15s ease;
 }
 
-.model-kebab-btn:hover {
-  border-color: var(--accent);
-}
+.model-kebab-btn:hover { border-color: var(--accent); }
 
 .model-kebab-menu {
   position: absolute;
@@ -419,7 +297,7 @@
   min-width: 190px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--r-md);
   box-shadow: var(--shadow-md);
   padding: 6px;
   display: flex;
@@ -436,7 +314,7 @@
   padding: 9px 10px;
   border: none;
   background: transparent;
-  border-radius: 7px;
+  border-radius: var(--r-sm);
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
@@ -445,66 +323,24 @@
   white-space: nowrap;
 }
 
-.model-menu-item:hover {
-  background: var(--accent-soft-bg);
-  color: var(--accent);
-}
+.model-menu-item:hover { background: var(--accent-soft-bg); color: var(--accent); }
 
-
-/* ======================================================
-   SWEETALERT2 THEME OVERRIDES (this popup renders outside
-   the React tree, so it needs its own font/radius rules)
-====================================================== */
-
+/* SWEETALERT2 THEME OVERRIDES */
 .swal-vector-popup {
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   border-radius: 16px !important;
 }
-
-.swal-vector-popup .swal2-title {
-  font-family: "Poppins", "Inter", sans-serif;
-  font-size: 19px;
-}
-
-.swal-vector-popup .swal2-html-container {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
+.swal-vector-popup .swal2-title { font-size: 19px; }
+.swal-vector-popup .swal2-html-container { font-size: 14px; color: var(--text-secondary); }
 .swal-vector-popup .swal2-confirm,
-.swal-vector-popup .swal2-cancel {
-  border-radius: 10px !important;
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  padding: 10px 20px !important;
-  box-shadow: none !important;
-}
+.swal-vector-popup .swal2-cancel { border-radius: var(--r-md) !important; font-weight: 600 !important; font-size: 14px !important; padding: 10px 20px !important; box-shadow: none !important; }
+.swal-vector-popup .swal2-icon.swal2-warning { border-color: var(--accent); color: var(--accent); }
+.swal-vector-popup .swal2-icon.swal2-success [class^="swal2-success-line"] { background-color: var(--accent); }
+.swal-vector-popup .swal2-icon.swal2-success .swal2-success-ring { border-color: var(--danger); }
 
-.swal-vector-popup .swal2-icon.swal2-warning {
-  border-color: var(--accent);
-  color: var(--accent);
-}
+.po-row-checkbox { width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent); }
 
-.swal-vector-popup .swal2-icon.swal2-success [class^="swal2-success-line"] {
-  background-color: var(--accent);
-}
-
-.swal-vector-popup .swal2-icon.swal2-success .swal2-success-ring {
-  border-color: var(--danger);
-}
-
-/* checkbox added by earlier changes, kept here for pages that don't
-   already import PODetails.css */
-.po-row-checkbox {
-  width: 17px;
-  height: 17px;
-  cursor: pointer;
-  accent-color: var(--accent);
-}
-
-@media (max-width: 900px) {
-  .boq-field-grid { grid-template-columns: repeat(2, 1fr); }
-}
+@media (max-width: 900px) { .boq-field-grid { grid-template-columns: repeat(2, 1fr); } }
 
 @media (max-width: 520px) {
   .boq-field-grid { grid-template-columns: 1fr; }
@@ -512,12 +348,6 @@
 }
 
 @media (max-width: 640px) {
-  .boq-toolbar-actions {
-    display: none;
-  }
-  .model-kebab-wrapper {
-    display: block;
-    margin-left: auto;
-    flex: 0 0 auto;
-  }
+  .boq-toolbar-actions { display: none; }
+  .model-kebab-wrapper { display: block; margin-left: auto; flex: 0 0 auto; }
 }
