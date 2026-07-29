@@ -1,19 +1,19 @@
 .search-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   background: var(--bg-surface);
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 7px 10px;
   min-width: 220px;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .search-bar:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft-bg);
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .search-bar-icon {
@@ -26,7 +26,7 @@
   outline: none;
   background: transparent;
   color: var(--text-primary);
-  font-size: 13.5px;
+  font-size: 13px;
   width: 100%;
   min-width: 0;
   font-family: inherit;
@@ -66,10 +66,7 @@
   }
 }
 
-/* ======================================================
-   SEARCHABLE DROPDOWN (Phase / Item Code selects)
-====================================================== */
-
+/* SEARCHABLE DROPDOWN */
 .searchable-select {
   position: relative;
   width: 100%;
@@ -81,17 +78,17 @@
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 10px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--r-md);
   border: 1px solid var(--border);
   background: var(--bg-surface);
   font-family: inherit;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 400;
   color: var(--text-primary);
   cursor: pointer;
-  transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
   box-sizing: border-box;
 }
 
@@ -107,7 +104,7 @@
 }
 
 .searchable-select-trigger:active:not(:disabled) {
-  transform: translateY(0);
+  transform: none;
 }
 
 .searchable-select.disabled .searchable-select-trigger {
@@ -132,29 +129,26 @@
 
 .searchable-select-panel {
   position: fixed;
-  /* Modal overlays are promoted to z-index: 5000 by theme-finish.css.
-     The menu is portalled to document.body, so it must sit above that
-     overlay or it opens invisibly behind the active dialog. */
   z-index: 5300;
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
   overflow: hidden;
   box-sizing: border-box;
-  min-width: 240px;
+  min-width: 220px;
   max-width: min(calc(100vw - 24px), 560px);
-  animation: searchable-select-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
+  animation: searchable-select-in 150ms cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: top center;
 }
 
 .searchable-select-search {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 7px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--border);
   color: var(--text-secondary);
   background: var(--bg-surface);
@@ -166,7 +160,7 @@
 .searchable-select-search input {
   border: none;
   outline: none;
-  font-size: 13px;
+  font-size: 12px;
   width: 100%;
   font-family: inherit;
   color: var(--text-primary);
@@ -187,7 +181,7 @@
 }
 
 .searchable-select-options::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 .searchable-select-options::-webkit-scrollbar-thumb {
@@ -203,10 +197,10 @@
   display: block;
   width: 100%;
   text-align: left;
-  padding: 11px 14px;
+  padding: 9px 12px;
   border: none;
   background: none;
-  font-size: 13.5px;
+  font-size: 13px;
   color: var(--text-primary);
   cursor: pointer;
   transition: background 120ms ease, color 120ms ease;
@@ -233,8 +227,8 @@
 }
 
 .searchable-select-empty {
-  padding: 14px;
-  font-size: 12.5px;
+  padding: 12px;
+  font-size: 12px;
   color: var(--text-secondary);
   text-align: center;
 }
@@ -244,12 +238,12 @@
   flex: 0 0 auto;
   width: 100%;
   margin: 0;
-  padding: 11px 14px;
+  padding: 9px 12px;
   border: 0;
   border-top: 1px solid var(--border);
   background: var(--bg-surface);
   color: var(--accent);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   text-align: left;
   cursor: pointer;
@@ -268,7 +262,7 @@
 @keyframes searchable-select-in {
   from {
     opacity: 0;
-    transform: translateY(-6px) scale(0.985);
+    transform: translateY(-4px) scale(0.985);
   }
 
   to {

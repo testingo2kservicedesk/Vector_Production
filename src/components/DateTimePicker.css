@@ -5,12 +5,12 @@
 .dtp-trigger {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   width: 100%;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-size: 13.5px;
+  border-radius: var(--r-md);
+  padding: 8px 10px;
+  font-size: 13px;
   color: var(--text-primary);
   background: var(--bg-page);
   font-family: inherit;
@@ -55,27 +55,27 @@
 
 .dtp-popover {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 6px);
   left: 0;
   z-index: 200;
-  width: 268px;
+  width: 260px;
   background: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-sm);
-  padding: 14px;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 12px;
 }
 
 .dtp-cal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .dtp-month-label {
-  font-family: "Oswald", "Inter", sans-serif;
-  font-size: 13.5px;
+  font-family: "Inter", sans-serif;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -84,8 +84,8 @@
   border: none;
   background: transparent;
   color: var(--text-secondary);
-  border-radius: 8px;
-  padding: 4px;
+  border-radius: var(--r-sm);
+  padding: 3px;
   display: flex;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
@@ -99,11 +99,11 @@
 .dtp-weekday-row {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .dtp-weekday {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-secondary);
   text-align: center;
@@ -125,8 +125,8 @@
   aspect-ratio: 1;
   border: none;
   background: transparent;
-  border-radius: 8px;
-  font-size: 12.5px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
   color: var(--text-primary);
   cursor: pointer;
   display: flex;
@@ -158,17 +158,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin-top: 12px;
-  padding-top: 12px;
+  gap: 5px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid var(--border);
 }
 
 .dtp-time-select {
   border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 6px 8px;
-  font-size: 13px;
+  border-radius: var(--r-sm);
+  padding: 5px 6px;
+  font-size: 12px;
   font-family: inherit;
   color: var(--text-primary);
   background: var(--bg-page);
@@ -187,13 +187,13 @@
 
 .dtp-done-btn {
   width: 100%;
-  margin-top: 12px;
+  margin-top: 10px;
   border: none;
   background: var(--accent);
   color: var(--accent-contrast);
-  border-radius: 999px;
-  padding: 8px 0;
-  font-size: 12.5px;
+  border-radius: var(--r-md);
+  padding: 7px 0;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s ease;
