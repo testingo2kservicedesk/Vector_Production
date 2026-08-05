@@ -778,9 +778,11 @@ export default function SaleRegister() {
     const pageToFetch = targetPage ?? page;
 
     try {
-      const res = await fetch(`${SALES_API_URL}?page=${pageToFetch}&limit=${PAGE_SIZE}&search=${encodeURIComponent(query.trim())}`);
-      const data = await res.json();
-      if (!res.ok || !data.success) {
+      const res = await api.get(SALES_API_URL, {
+        params: { page: pageToFetch, limit: PAGE_SIZE, search: query.trim() },
+      });
+      const data = res.data;
+      if (!data.success) {
         throw new Error(data.message || `Server responded with ${res.status}`);
       }
       setRows(data.sales || []);
