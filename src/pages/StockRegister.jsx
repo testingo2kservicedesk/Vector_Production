@@ -68,12 +68,12 @@ export default function StockRegister() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [detailsRow, setDetailsRow] = useState(null);
 
   const fetchStock = useCallback(async ({ silent = false, targetPage } = {}) => {
-    if (!silent) setLoading(true);
+    if (!silent) setLoading(false);
     setLoadError("");
     const pageToFetch = targetPage ?? page;
     try {

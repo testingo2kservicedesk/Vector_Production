@@ -50,7 +50,7 @@ export default function Phase({ model, onBack, readOnly = false }) {
   const [showModal, setShowModal] = useState(false);
   const [phases, setPhases] = useState([]);
   const [activePhase, setActivePhase] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [itemCodes, setItemCodes] = useState([]);
   const [selectedItemCode, setSelectedItemCode] = useState("");
@@ -64,7 +64,7 @@ export default function Phase({ model, onBack, readOnly = false }) {
   const menuRef = useRef(null);
 
   const loadPhases = useCallback(async () => {
-    setLoading(true);
+    setLoading(false);
     setError("");
 
     try {

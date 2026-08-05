@@ -51,7 +51,7 @@ export default function Model() {
   const [models, setModels] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [activeModel, setActiveModel] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const [selectMode, setSelectMode] = useState(false);
@@ -62,7 +62,7 @@ export default function Model() {
   const menuRef = useRef(null);
 
   const loadModels = async () => {
-    setLoading(true);
+    setLoading(false);
     setError("");
 
     try {
