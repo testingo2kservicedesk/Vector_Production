@@ -53,4 +53,30 @@ def init_firebase():
 
 db, bucket = init_firebase()
 users_collection = db.collection("users")
+user_email_index = db.collection("user_email_index")
+
+
+def user_document_for_email(email):
+    """Direct lookup via the maintained email index (no collection scan)."""
+    key = str(email or "").strip().lower()
+    if not key:
+        return None
+    index_doc = user_email_index.document(key).get()
+    if not index_doc.exists:
+        # Backwards-compatible fallback while existing accounts are migrated.
+        matches = users_collection.where("email", "==", key).limit(1).get()
+        if not matches:
+            return None
+        user_doc = matches[0]
+        create_user_email_index(key, user_doc.id)
+        return user_doc
+    user_id = (index_doc.to_dict() or {}).get("userId")
+    if not user_id:
+        return None
+    user_doc = users_collection.document(str(user_id)).get()
+    return user_doc if user_doc.exists else None
+
+
+def create_user_email_index(email, user_id):
+    user_email_index.document(str(email).strip().lower()).set({"userId": str(user_id)})
 

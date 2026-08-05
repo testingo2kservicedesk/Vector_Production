@@ -186,6 +186,7 @@ export default function Invoices() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [closing, setClosing] = useState(false);
   const [formValues, setFormValues] = useState(emptyInvoiceForm);
+  const initialFormValuesRef = useRef(emptyInvoiceForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [boqPhases, setBoqPhases] = useState([]);
@@ -304,6 +305,7 @@ export default function Invoices() {
  
   const openAddModal = () => {
     setIsEditMode(false);
+    initialFormValuesRef.current = emptyInvoiceForm;
     setFormValues(emptyInvoiceForm);
     setFormError("");
     setClosing(false);
@@ -313,7 +315,7 @@ export default function Invoices() {
  
   const openEditModal = (row) => {
     setIsEditMode(true);
-    setFormValues({
+    const initialValues = {
       id: row.id,
       invoice: row.invoice || "",
       date: row.date || "",
@@ -326,14 +328,24 @@ export default function Invoices() {
       qtyInv: row.qtyInv || "",
       qtyRecv: row.qtyRecv || "",
       verifiedBy: row.verifiedBy || "",
-    });
+    };
+    initialFormValuesRef.current = initialValues;
+    setFormValues(initialValues);
     setFormError("");
     setClosing(false);
     setModalOpen(true);
   };
  
-  const requestClose = () => {
+  const requestClose = async (skipConfirmation = false) => {
     if (closing) return;
+    if (skipConfirmation !== true && JSON.stringify(formValues) !== JSON.stringify(initialFormValuesRef.current)) {
+      const result = await swalConfirm({
+        title: "Discard unsaved changes?",
+        text: "Your invoice changes will be lost unless you save them.",
+        confirmText: "Discard changes",
+      });
+      if (!result.isConfirmed) return;
+    }
     setClosing(true);
     setTimeout(() => {
       setModalOpen(false);
@@ -449,7 +461,7 @@ export default function Invoices() {
       }
  
       setSaving(false);
-      requestClose();
+      requestClose(true);
  
       await swalSuccess(
         isEditMode ? "Invoice Updated" : "Invoice Saved",

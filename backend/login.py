@@ -1,6 +1,6 @@
 import bcrypt
 from flask import Blueprint, request, jsonify
-from firebase_config import users_collection
+from firebase_config import user_document_for_email
 from auth_utils import generate_token, token_required
 
 login_bp = Blueprint("login", __name__)
@@ -19,12 +19,9 @@ def login():
     if not email or not password:
         return jsonify({"success": False, "message": "Email and password required"}), 400
 
-    results = users_collection.where("email", "==", email).limit(1).get()
-
-    if not results:
+    user_doc = user_document_for_email(email)
+    if not user_doc:
         return jsonify({"success": False, "message": "Invalid Email or Password"}), 401
-
-    user_doc = results[0]
     user = user_doc.to_dict()
 
     stored_hash = user.get("password", "").encode("utf-8")

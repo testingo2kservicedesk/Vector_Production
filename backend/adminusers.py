@@ -1,6 +1,6 @@
 import bcrypt
 from flask import Blueprint, request, jsonify
-from firebase_config import users_collection
+from firebase_config import users_collection, user_document_for_email, create_user_email_index, user_email_index
 from auth_utils import roles_required
 
 admin_users_bp = Blueprint("admin_users", __name__)
@@ -30,19 +30,19 @@ def create_user():
     if len(password) < 8:
         return jsonify({"success": False, "message": "Password must be at least 8 characters"}), 400
 
-    existing = users_collection.where("email", "==", email).limit(1).get()
-    if existing:
+    if user_document_for_email(email):
         return jsonify({"success": False, "message": "An account with this email already exists"}), 409
 
     hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
-    users_collection.add({
+    _, user_ref = users_collection.add({
         "email": email,
         "password": hashed,
         "name": name,
         "role": role,
         "created_by": request.user.get("email"),
     })
+    create_user_email_index(email, user_ref.id)
 
     role_label = "Production In-charge" if role == "production_incharge" else role.replace("coadmin", "Co-Admin").title()
     return jsonify({"success": True, "message": f"{role_label} account created"}), 201
@@ -79,6 +79,8 @@ def delete_user(user_id):
         return jsonify({"success": False, "message": "You cannot delete your own account"}), 403
 
     doc_ref.delete()
+    if target_email:
+        user_email_index.document(target_email).delete()
     return jsonify({"success": True, "message": "User deleted"}), 200
 
 
