@@ -77,7 +77,7 @@ const swalConfirm = (title, text) =>
 function AdminCreateUser() {
   const { email: currentUserEmail } = useAuth();
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [pageFilter, setPageFilter] = useState({ field: "", value: "" });
 

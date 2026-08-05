@@ -85,7 +85,7 @@ export default function Dashboard() {
   const captureRef = useRef(null);
   const chartTheme = useThemeColors();
   const [dashboard, setDashboard] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const { role } = useAuth();
   const dashboardCacheKey = `vector_dashboard_v2_${role || "guest"}`;

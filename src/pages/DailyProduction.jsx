@@ -528,7 +528,7 @@ export default function DailyProduction() {
  
   // ---------- Assembly list loading/error state ----------
  
-  const [rowsLoading, setRowsLoading] = useState(true);
+  const [rowsLoading, setRowsLoading] = useState(false);
  
   const [rowsError, setRowsError] = useState("");
  
@@ -622,7 +622,7 @@ export default function DailyProduction() {
  
   const fetchAssemblyUnits = useCallback(async ({ silent = false, targetPage } = {}) => {
  
-    if (!silent) setRowsLoading(true);
+    if (!silent) setRowsLoading(false);
  
     setRowsError("");
  

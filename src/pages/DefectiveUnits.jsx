@@ -218,7 +218,7 @@ export default function DefectiveUnits() {
   const [rows, setRows] = useState([]);
 
   // ---------- Defect list loading/error state ----------
-  const [rowsLoading, setRowsLoading] = useState(true);
+  const [rowsLoading, setRowsLoading] = useState(false);
   const [rowsError, setRowsError] = useState("");
 
   // ---------- Pagination state (same pattern as Sale Register) ----------
@@ -306,7 +306,7 @@ export default function DefectiveUnits() {
   // ---------- Fetch defects from the backend (paginated, same pattern as
   // Sale Register's fetchRows) ----------
   const fetchDefects = useCallback(async ({ silent = false, targetPage } = {}) => {
-    if (!silent) setRowsLoading(true);
+    if (!silent) setRowsLoading(false);
     setRowsError("");
     const pageToFetch = targetPage ?? page;
 

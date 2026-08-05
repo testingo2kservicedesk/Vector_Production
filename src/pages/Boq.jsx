@@ -452,7 +452,7 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
 
 export default function BOQ({ model, phase, modelId, phaseId, onBack, readOnly = false }) {
   const [boq, setBoq] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [pageFilter, setPageFilter] = useState({ field: "", value: "" });
@@ -482,7 +482,7 @@ export default function BOQ({ model, phase, modelId, phaseId, onBack, readOnly =
       return;
     }
 
-    if (!silent) setLoading(true);
+    if (!silent) setLoading(false);
     setError("");
 
     const pageToFetch = targetPage ?? page;

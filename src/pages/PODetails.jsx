@@ -224,7 +224,7 @@ export default function PODetails() {
   const [pageFilter, setPageFilter] = useState({ field: "", value: "" });
   const [rows, setRows] = useState([]);
 
-  const [rowsLoading, setRowsLoading] = useState(true);
+  const [rowsLoading, setRowsLoading] = useState(false);
   const [rowsError, setRowsError] = useState("");
 
   const [page, setPage] = useState(1);
@@ -335,7 +335,7 @@ export default function PODetails() {
   }, [detailsOpen, detailsEditMode, detailsRow, requestCloseDetails]);
 
   const fetchPoDetails = useCallback(async ({ silent = false, targetPage } = {}) => {
-    if (!silent) setRowsLoading(true);
+    if (!silent) setRowsLoading(false);
     setRowsError("");
     const pageToFetch = targetPage ?? page;
     try {

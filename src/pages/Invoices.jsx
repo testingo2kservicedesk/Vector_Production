@@ -179,7 +179,7 @@ export default function Invoices() {
   const [totalCount, setTotalCount] = useState(0);
  
   // ---------- Invoice list loading/error state ----------
-  const [rowsLoading, setRowsLoading] = useState(true);
+  const [rowsLoading, setRowsLoading] = useState(false);
   const [rowsError, setRowsError] = useState("");
  
   const [modalOpen, setModalOpen] = useState(false);
@@ -223,7 +223,7 @@ export default function Invoices() {
  
   // ---------- Fetch Invoices from the backend (initial load + post-save refresh) ----------
   const fetchInvoices = useCallback(async ({ silent = false, targetPage } = {}) => {
-    if (!silent) setRowsLoading(true);
+    if (!silent) setRowsLoading(false);
     setRowsError("");
     const pageToFetch = targetPage ?? page;
     try {

@@ -467,7 +467,7 @@ export default function SaleRegister() {
   const [query, setQuery] = useState("");
   const [pageFilter, setPageFilter] = useState({ field: "", value: "" });
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -783,7 +783,7 @@ export default function SaleRegister() {
 
   // ---- Fetch existing sales from the backend on mount ----
   const fetchRows = useCallback(async ({ silent = false, targetPage } = {}) => {
-    if (!silent) setLoading(true);
+    if (!silent) setLoading(false);
     setLoadError("");
     const pageToFetch = targetPage ?? page;
 
