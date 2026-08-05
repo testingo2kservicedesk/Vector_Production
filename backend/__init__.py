@@ -1,7 +1,9 @@
 
 import os
+import logging
+import time
 
-from flask import Flask
+from flask import Flask, g, request
 from flask_cors import CORS
 
 from login import login_bp
@@ -22,6 +24,25 @@ from forgot_password import forgot_password_bp
 def create_app():
 
     app = Flask(__name__)
+    logger = logging.getLogger("vector.performance")
+
+    @app.before_request
+    def _start_request_timer():
+        g.request_started_at = time.perf_counter()
+
+    @app.after_request
+    def _log_request_timing(response):
+        started_at = getattr(g, "request_started_at", None)
+        if started_at is None:
+            return response
+        elapsed_ms = (time.perf_counter() - started_at) * 1000
+        auth_ms = getattr(g, "auth_duration_ms", 0.0)
+        response.headers["Server-Timing"] = f"app;dur={elapsed_ms:.1f}, auth;dur={auth_ms:.1f}"
+        # Keep normal Cloud Run logs concise; surface every slow API request.
+        if elapsed_ms >= 500:
+            logger.warning("slow_request method=%s path=%s status=%s total_ms=%.1f auth_ms=%.1f",
+                           request.method, request.path, response.status_code, elapsed_ms, auth_ms)
+        return response
 
     @app.get("/health")
     def health_check():

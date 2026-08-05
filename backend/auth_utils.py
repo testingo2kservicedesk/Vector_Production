@@ -10,10 +10,11 @@ Never leave the default fallback in prod.
 
 import os
 import datetime
+import time
 from functools import wraps
 
 import jwt
-from flask import request, jsonify
+from flask import request, jsonify, g
 
 JWT_SECRET = os.getenv("JWT_SECRET", "change-this-in-production")
 JWT_ALGORITHM = "HS256"
@@ -56,6 +57,7 @@ def token_required(f):
 
     @wraps(f)
     def wrapper(*args, **kwargs):
+        started_at = time.perf_counter()
         token = _get_token_from_header()
         if not token:
             return jsonify({"success": False, "message": "Missing authentication token"}), 401
@@ -67,6 +69,7 @@ def token_required(f):
             return jsonify({"success": False, "message": "Invalid authentication token"}), 401
 
         request.user = payload
+        g.auth_duration_ms = (time.perf_counter() - started_at) * 1000
         return f(*args, **kwargs)
 
     return wrapper
