@@ -943,10 +943,20 @@ export default function DailyProduction() {
  
   };
  
-  const requestClose = () => {
+  const requestClose = async (skipConfirmation = false) => {
  
     if (closing) return;
- 
+
+    const initialValues = isEditMode ? editOriginalValues : emptyAssemblyForm;
+    if (skipConfirmation !== true && JSON.stringify(formValues) !== JSON.stringify(initialValues)) {
+      const result = await swalConfirm({
+        title: "Discard unsaved changes?",
+        text: "Your assembly-unit changes will be lost unless you save them.",
+        confirmText: "Discard changes",
+      });
+      if (!result.isConfirmed) return;
+    }
+
     setClosing(true);
  
     setTimeout(() => {
@@ -1283,7 +1293,7 @@ export default function DailyProduction() {
  
       setSaving(false);
  
-      requestClose();
+      requestClose(true);
  
       await swalSuccess(
  

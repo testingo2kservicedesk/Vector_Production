@@ -46,7 +46,7 @@
 
 import bcrypt
 from flask import Blueprint, request, jsonify
-from firebase_config import users_collection
+from firebase_config import users_collection, user_document_for_email, create_user_email_index
 
 signup_bp = Blueprint("signup", __name__)
 
@@ -66,8 +66,7 @@ def signup():
         return jsonify({"success": False, "message": "Email and password required"}), 400
 
     try:
-        existing = users_collection.where("email", "==", email).limit(1).get()
-        if len(existing) > 0:
+        if user_document_for_email(email):
             return jsonify({"success": False, "message": "Email already registered"}), 409
 
         hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
@@ -78,6 +77,7 @@ def signup():
             "email": email,
             "password": hashed_password.decode("utf-8")
         })
+        create_user_email_index(email, doc_ref.id)
 
         return jsonify({
             "success": True,

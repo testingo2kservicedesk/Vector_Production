@@ -295,7 +295,7 @@ export default function PODetails() {
     setDetailsOpen(true);
   };
 
-  const requestCloseDetails = useCallback(() => {
+  const closeDetails = useCallback(() => {
     if (detailsClosing) return;
     setDetailsClosing(true);
     setTimeout(() => {
@@ -307,6 +307,15 @@ export default function PODetails() {
       setDetailsError("");
     }, 200);
   }, [detailsClosing]);
+
+  const requestCloseDetails = useCallback(async () => {
+    if (detailsClosing) return;
+    if (detailsEditMode && JSON.stringify(editForm) !== JSON.stringify(buildEditForm(detailsRow))) {
+      const result = await Swal.fire({ title: "Discard unsaved changes?", text: "Your PO Detail changes will be lost unless you save them.", icon: "warning", showCancelButton: true, confirmButtonText: "Discard changes", cancelButtonText: "Keep editing", reverseButtons: true, customClass: { popup: "swal-vector-popup" } });
+      if (!result.isConfirmed) return;
+    }
+    closeDetails();
+  }, [detailsClosing, detailsEditMode, editForm, detailsRow, closeDetails]);
 
   useEffect(() => {
     if (!detailsOpen) return;
@@ -493,7 +502,17 @@ export default function PODetails() {
     setMenuOpen(false);
   };
 
-  const requestClose = () => {
+  const requestClose = (skipConfirmation = false) => {
+    if (closing) return;
+    if (skipConfirmation !== true && JSON.stringify(formValues) !== JSON.stringify(emptyPoForm)) {
+      Swal.fire({ title: "Discard unsaved changes?", text: "Your PO Detail changes will be lost unless you save them.", icon: "warning", showCancelButton: true, confirmButtonText: "Discard changes", cancelButtonText: "Keep editing", confirmButtonColor: "var(--accent)", cancelButtonColor: "var(--bg-surface-alt)", reverseButtons: true, focusCancel: true, customClass: { popup: "swal-vector-popup" } })
+        .then((result) => { if (result.isConfirmed) closeModal(); });
+      return;
+    }
+    closeModal();
+  };
+
+  const closeModal = () => {
     if (closing) return;
     setClosing(true);
     setTimeout(() => {
@@ -531,7 +550,7 @@ export default function PODetails() {
         throw new Error(res.data.message || "Failed to save PO Detail");
       }
 
-      requestClose();
+      requestClose(true);
       await swalSuccess("PO Detail Saved", "The PO Detail has been saved successfully.");
 
       if (page === 1) {
@@ -592,7 +611,7 @@ export default function PODetails() {
     }
 
     if (Object.keys(payload).length === 0) {
-      setDetailsEditMode(false);
+      closeDetails();
       return;
     }
 
@@ -1139,7 +1158,7 @@ export default function PODetails() {
       {detailsOpen && detailsRow && createPortal(
         <div
           className={`po-details-overlay${detailsClosing ? " closing" : ""}`}
-          onClick={detailsEditMode ? undefined : requestCloseDetails}
+          onClick={requestCloseDetails}
         >
           <div
             className={`po-details-container${detailsClosing ? " closing" : ""}`}

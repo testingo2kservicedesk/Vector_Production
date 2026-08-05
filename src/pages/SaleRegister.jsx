@@ -477,6 +477,7 @@ export default function SaleRegister() {
   const [customerSaleParent, setCustomerSaleParent] = useState(null);
   const [closing, setClosing] = useState(false);
   const [formValues, setFormValues] = useState(emptySaleForm);
+  const initialFormValuesRef = useRef(emptySaleForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [models, setModels] = useState([]);
@@ -609,6 +610,7 @@ export default function SaleRegister() {
   const openCustomerSale = (row) => {
     setCustomerSaleParent(row);
     setFormValues(emptySaleForm);
+    initialFormValuesRef.current = emptySaleForm;
     setFormError("");
     setClosing(false);
     setModalOpen(true);
@@ -626,8 +628,16 @@ export default function SaleRegister() {
     setDetailsOpen(true);
   };
 
-  const requestCloseDetails = useCallback(() => {
+  const requestCloseDetails = useCallback(async (skipConfirmation = false) => {
     if (detailsClosing) return;
+    if (skipConfirmation !== true && isEditingDetails && JSON.stringify(editValues) !== JSON.stringify(buildEditValues(detailsRow))) {
+      const result = await swalConfirm({
+        title: "Discard unsaved changes?",
+        text: "Your sale changes will be lost unless you save them.",
+        confirmText: "Discard changes",
+      });
+      if (!result.isConfirmed) return;
+    }
     setDetailsClosing(true);
     setTimeout(() => {
       setDetailsOpen(false);
@@ -638,7 +648,7 @@ export default function SaleRegister() {
       setDetailsError("");
       setCustomerSaleDetailsParent(null);
     }, 200);
-  }, [detailsClosing]);
+  }, [detailsClosing, isEditingDetails, editValues, detailsRow]);
 
   useEffect(() => {
     if (!detailsOpen) return;
@@ -751,7 +761,7 @@ export default function SaleRegister() {
       if (customerSaleDetailsParent) {
         setRows((prev) => prev.map((row) => getRowId(row) === id ? { ...row, customerSale: payload.customerSale } : row));
         setDetailsRow((prev) => ({ ...prev, ...payload.customerSale }));
-        setIsEditingDetails(false);
+        requestCloseDetails(true);
         swalSuccess("Customer sale updated", "The customer sale has been updated successfully.");
         return;
       }
@@ -760,7 +770,7 @@ export default function SaleRegister() {
         prev.map((r) => (getRowId(r) === id ? { ...r, ...updatedRow } : r))
       );
       setDetailsRow((prev) => ({ ...prev, ...updatedRow }));
-      setIsEditingDetails(false);
+      requestCloseDetails(true);
       swalSuccess("Sale updated", "The sale has been updated successfully.");
     } catch (err) {
       const msg = err.message || "Failed to update sale. Please try again.";
@@ -838,6 +848,7 @@ export default function SaleRegister() {
 
   const openModal = () => {
     setFormValues(emptySaleForm);
+    initialFormValuesRef.current = emptySaleForm;
     setFormError("");
     setClosing(false);
     setModalOpen(true);
@@ -846,8 +857,16 @@ export default function SaleRegister() {
     setMenuOpen(false);
   };
 
-  const requestClose = () => {
+  const requestClose = async (skipConfirmation = false) => {
     if (closing) return;
+    if (skipConfirmation !== true && JSON.stringify(formValues) !== JSON.stringify(initialFormValuesRef.current)) {
+      const result = await swalConfirm({
+        title: "Discard unsaved changes?",
+        text: "Your sale changes will be lost unless you save them.",
+        confirmText: "Discard changes",
+      });
+      if (!result.isConfirmed) return;
+    }
     setClosing(true);
     setTimeout(() => {
       setModalOpen(false);
@@ -948,7 +967,7 @@ export default function SaleRegister() {
       // pull out just the row fields for the table, same pattern as DefectiveUnits.
       await fetchRows({ targetPage: customerSaleParent ? page : 1, silent: true });
       if (!customerSaleParent) setPage(1);
-      requestClose();
+      requestClose(true);
       swalSuccess(customerSaleParent ? "Customer sale saved" : "Sale saved", customerSaleParent ? "The customer sale has been saved successfully." : "The sale has been saved successfully.");
     } catch (err) {
       const msg = err.message || "Something went wrong while saving. Please try again.";

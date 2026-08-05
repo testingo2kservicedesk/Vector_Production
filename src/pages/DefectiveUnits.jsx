@@ -230,6 +230,7 @@ export default function DefectiveUnits() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [closing, setClosing] = useState(false);
   const [formValues, setFormValues] = useState(emptyDefectForm);
+  const initialFormValuesRef = useRef(emptyDefectForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -388,6 +389,7 @@ export default function DefectiveUnits() {
 
   const openAddModal = () => {
     setIsEditMode(false);
+    initialFormValuesRef.current = emptyDefectForm;
     setFormValues(emptyDefectForm);
     setFormError("");
     setClosing(false);
@@ -397,14 +399,24 @@ export default function DefectiveUnits() {
 
   const openEditModal = (row) => {
     setIsEditMode(true);
-    setFormValues({ ...emptyDefectForm, ...row, attachment: [] });
+    const initialValues = { ...emptyDefectForm, ...row, attachment: [] };
+    initialFormValuesRef.current = initialValues;
+    setFormValues(initialValues);
     setFormError("");
     setClosing(false);
     setModalOpen(true);
   };
 
-  const requestClose = () => {
+  const requestClose = async (skipConfirmation = false) => {
     if (closing) return;
+    if (skipConfirmation !== true && JSON.stringify(formValues) !== JSON.stringify(initialFormValuesRef.current)) {
+      const result = await swalConfirm({
+        title: "Discard unsaved changes?",
+        text: "Your defective-unit changes will be lost unless you save them.",
+        confirmText: "Discard changes",
+      });
+      if (!result.isConfirmed) return;
+    }
     setClosing(true);
     setTimeout(() => {
       setModalOpen(false);
@@ -477,7 +489,7 @@ export default function DefectiveUnits() {
       }
 
       setSaving(false);
-      requestClose();
+      requestClose(true);
 
       await swalSuccess(
         isEditMode ? "Defect Updated" : "Defect Saved",

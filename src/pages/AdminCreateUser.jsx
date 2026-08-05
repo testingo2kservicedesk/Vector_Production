@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import Swal from "sweetalert2";
 import {
@@ -86,6 +86,7 @@ function AdminCreateUser() {
   const [showPassword, setShowPassword] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [accountForm, setAccountForm] = useState({ role: "user" });
+  const initialAccountFormRef = useRef({ role: "user" });
   const [savingAccount, setSavingAccount] = useState(false);
 
   const fetchUsers = useCallback(async () => {
@@ -175,7 +176,30 @@ function AdminCreateUser() {
 
   const openAccountEditor = (user) => {
     setEditingUser(user);
-    setAccountForm({ role: user.role || "user" });
+    const initialValues = { role: user.role || "user" };
+    initialAccountFormRef.current = initialValues;
+    setAccountForm(initialValues);
+  };
+
+  const requestCloseAccountEditor = async () => {
+    if (savingAccount) return;
+    if (JSON.stringify(accountForm) !== JSON.stringify(initialAccountFormRef.current)) {
+      const result = await Swal.fire({
+        title: "Discard unsaved changes?",
+        text: "Your account changes will be lost unless you save them.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Discard changes",
+        cancelButtonText: "Keep editing",
+        confirmButtonColor: "var(--accent)",
+        cancelButtonColor: "var(--bg-surface-alt)",
+        reverseButtons: true,
+        focusCancel: true,
+        customClass: { popup: "swal-vector-popup" },
+      });
+      if (!result.isConfirmed) return;
+    }
+    setEditingUser(null);
   };
 
   const saveAccount = async (event) => {
@@ -386,13 +410,13 @@ function AdminCreateUser() {
       )}
 
       {editingUser && createPortal(
-        <div className="acu-overlay" onClick={() => !savingAccount && setEditingUser(null)}>
+        <div className="acu-overlay" onClick={requestCloseAccountEditor}>
           <div className="acu-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="acu-modal-header"><div className="acu-modal-title"><Pencil size={18} /> Edit Account</div><button className="acu-modal-close" onClick={() => !savingAccount && setEditingUser(null)}><X size={18} /></button></div>
+            <div className="acu-modal-header"><div className="acu-modal-title"><Pencil size={18} /> Edit Account</div><button className="acu-modal-close" onClick={requestCloseAccountEditor}><X size={18} /></button></div>
             <form className="acu-form" onSubmit={saveAccount}>
               <p className="acu-hint">Updating the role for {editingUser.name || editingUser.email}.</p>
               <div className="acu-field"><label>Role</label><select value={accountForm.role} onChange={(event) => setAccountForm((form) => ({ ...form, role: event.target.value }))}>{ROLE_OPTIONS.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</select></div>
-              <div className="acu-modal-actions"><button type="button" className="acu-cancel-btn" onClick={() => setEditingUser(null)}>Cancel</button><button type="submit" className="acu-submit" disabled={savingAccount}>{savingAccount ? "Saving..." : "Save Changes"}</button></div>
+              <div className="acu-modal-actions"><button type="button" className="acu-cancel-btn" onClick={requestCloseAccountEditor}>Cancel</button><button type="submit" className="acu-submit" disabled={savingAccount}>{savingAccount ? "Saving..." : "Save Changes"}</button></div>
             </form>
           </div>
         </div>, document.body
