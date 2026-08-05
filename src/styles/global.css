@@ -756,6 +756,10 @@ select option:checked { color: var(--accent-contrast) !important; background: va
 .searchable-select-action, .page-filter-clear {
   color: var(--accent-600) !important; background: var(--bg-surface) !important; border: 1px solid var(--border) !important; border-radius: var(--r-sm) !important;
 }
+.searchable-select-panel > .searchable-select-action {
+  width: calc(100% - 16px) !important;
+  margin: 8px !important;
+}
 .searchable-select-action:hover:not(:disabled), .page-filter-clear:hover:not(:disabled) {
   color: var(--accent-contrast) !important; background: var(--accent) !important; border-color: var(--accent) !important;
 }

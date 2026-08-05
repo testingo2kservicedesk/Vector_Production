@@ -100,20 +100,22 @@ const emptyRow = (phaseName = "", itemCode = "", itemCodeId = "") =>
   });
 
 function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", rows, onClose, onSave }) {
-  const [draftRows, setDraftRows] = useState(
-    rows.length ? rows.map(withCalculatedFields) : [emptyRow(phaseName, phaseItemCode, phaseItemCodeId)]
+  const initialDraftRows = useMemo(
+    () => rows.length ? rows.map(withCalculatedFields) : [emptyRow(phaseName, phaseItemCode, phaseItemCodeId)],
+    [phaseName, phaseItemCode, phaseItemCodeId, rows]
   );
+  const [draftRows, setDraftRows] = useState(initialDraftRows);
   const [closing, setClosing] = useState(false);
+  const [confirmingClose, setConfirmingClose] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [itemCodes, setItemCodes] = useState([]);
   const [itemCodesLoading, setItemCodesLoading] = useState(true);
+  const [suppliers, setSuppliers] = useState([]);
 
   useEffect(() => {
-    setDraftRows(
-      rows.length ? rows.map(withCalculatedFields) : [emptyRow(phaseName, phaseItemCode, phaseItemCodeId)]
-    );
-  }, [phaseName, phaseItemCode, phaseItemCodeId, rows]);
+    setDraftRows(initialDraftRows);
+  }, [initialDraftRows]);
 
   // The catalog endpoint also performs a safe, one-time backfill of codes
   // created by earlier versions of the BOQ form.
@@ -140,8 +142,43 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
     return () => { cancelled = true; };
   }, []);
 
-  const requestClose = () => {
-    if (closing || saving) return;
+  useEffect(() => {
+    let cancelled = false;
+    const loadSuppliers = async () => {
+      try {
+        const response = await api.get(`${API_BASE_URL}/suppliers`);
+        if (response.data.success && !cancelled) setSuppliers(response.data.suppliers || []);
+      } catch {
+        // The field still accepts a new supplier if suggestions cannot load.
+      }
+    };
+    loadSuppliers();
+    return () => { cancelled = true; };
+  }, []);
+
+  const requestClose = async () => {
+    if (closing || saving || confirmingClose) return;
+
+    const hasUnsavedChanges = JSON.stringify(draftRows) !== JSON.stringify(initialDraftRows);
+    if (hasUnsavedChanges) {
+      setConfirmingClose(true);
+      const result = await Swal.fire({
+        title: "Discard unsaved BOQ changes?",
+        text: "Your entered BOQ items will be lost unless you save them.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Discard changes",
+        cancelButtonText: "Keep editing",
+        confirmButtonColor: "var(--accent)",
+        cancelButtonColor: "var(--bg-surface-alt)",
+        reverseButtons: true,
+        focusCancel: true,
+        customClass: { popup: "swal-vector-popup" },
+      });
+      setConfirmingClose(false);
+      if (!result.isConfirmed) return;
+    }
+
     setClosing(true);
     setTimeout(() => {
       onClose();
@@ -168,8 +205,10 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
     if (value !== CREATE_NEW_ITEM_CODE) {
       const selected = itemCodes.find((item) => item.code === value);
       if (selected) {
-        updateField(rowIndex, "code", selected.code);
-        updateField(rowIndex, "itemCodeId", selected.id);
+        setDraftRows((prev) => prev.map((row, index) => index === rowIndex
+          ? withCalculatedFields({ ...row, code: selected.code, itemCodeId: selected.id, desc: selected.desc || row.desc })
+          : row
+        ));
       }
       return;
     }
@@ -190,6 +229,7 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
   };
 
   const itemCodeOptions = itemCodes.map((item) => ({ value: item.code, label: item.code }));
+  const supplierOptions = suppliers.map((supplier) => ({ value: supplier, label: supplier }));
 
   const removeRow = (rowIndex) => {
     setDraftRows((prev) => (prev.length === 1 ? prev : prev.filter((_, index) => index !== rowIndex)));
@@ -353,10 +393,14 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
                 </label>
 
                 <label className="boq-field">
-                  <span>Supplier Name </span>
-                  <input
+                  <span>Supplier Name</span>
+                  <SearchableSelect
+                    options={supplierOptions}
                     value={row.vendor ?? ""}
-                    onChange={(e) => updateField(rowIndex, "vendor", e.target.value)}
+                    onChange={(value) => updateField(rowIndex, "vendor", value)}
+                    placeholder="Select or enter supplier"
+                    emptyMessage="Type a supplier name to add it"
+                    allowCustomValue
                   />
                 </label>
 
@@ -830,7 +874,10 @@ export default function BOQ({ model, phase, modelId, phaseId, onBack, readOnly =
           phaseName={phaseName}
           phaseItemCode={phaseItemCode}
           phaseItemCodeId={phaseItemCodeId}
-          rows={boq?.rows || []}
+          // The API paginates the table rows, but an edit replaces the
+          // complete BOQ document. Give the editor every row so saving an
+          // edit from page 1 cannot overwrite rows that are on page 2+.
+          rows={boq?.allRows || boq?.rows || []}
           onClose={() => setEditorOpen(false)}
           onSave={handleSave}
         />

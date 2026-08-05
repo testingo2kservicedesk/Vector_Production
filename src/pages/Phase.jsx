@@ -236,7 +236,7 @@ export default function Phase({ model, onBack, readOnly = false }) {
 
     const result = await swalConfirm({
       title: "Delete selected phases?",
-      text: `Delete ${selectedIds.size} selected phase(s)? This cannot be undone.`,
+      text: `Delete ${selectedIds.size} selected phase(s), including their BOQs, PO details, and invoices? This cannot be undone.`,
     });
     if (!result.isConfirmed) return;
 

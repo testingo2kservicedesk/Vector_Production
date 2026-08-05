@@ -39,6 +39,7 @@ export function SearchableSelect({
   loading = false,
   emptyMessage = "No options available",
   actionOption,
+  allowCustomValue = false,
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -125,6 +126,9 @@ export function SearchableSelect({
     close();
     triggerRef.current?.focus();
   };
+
+  const customValue = search.trim();
+  const displayValue = selectedOption?.label || value;
  
   return (
     <div className={`searchable-select${disabled ? " disabled" : ""}`} ref={containerRef}>
@@ -137,8 +141,8 @@ export function SearchableSelect({
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={selectedOption ? "" : "searchable-select-placeholder"}>
-          {loading ? "Loading..." : selectedOption ? selectedOption.label : placeholder}
+        <span className={displayValue ? "" : "searchable-select-placeholder"}>
+          {loading ? "Loading..." : displayValue || placeholder}
         </span>
         {loading ? (
           <Loader2 size={15} className="spin" />
@@ -176,6 +180,15 @@ export function SearchableSelect({
               ))
             )}
           </div>
+          {allowCustomValue && customValue && !options.some((opt) => opt.value.toLowerCase() === customValue.toLowerCase()) && (
+            <button
+              type="button"
+              className="searchable-select-action"
+              onClick={() => handleSelect({ value: customValue, label: customValue })}
+            >
+              Use “{customValue}”
+            </button>
+          )}
           {actionOption && (
             <button
               type="button"

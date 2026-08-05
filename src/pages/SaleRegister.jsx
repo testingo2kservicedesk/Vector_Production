@@ -1032,7 +1032,7 @@ export default function SaleRegister() {
   const tableColumns = useMemo(() => {
     const customerSalesColumn = {
       key: "customerSalesAction",
-      label: "Customer Sales",
+      label: "O2K Sales",
       render: (row) => row.customerSale ? (
         <button type="button" className="data-table-view-btn" onClick={() => openCustomerSaleDetails(row)}>
           <Pencil size={16} /> View
