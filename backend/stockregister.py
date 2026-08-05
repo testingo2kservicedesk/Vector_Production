@@ -51,6 +51,12 @@ def list_stock_register():
         po_line_keys = {}
         completed_production = {}
         active_model_ids = {doc.id for doc in db.collection("models").stream()}
+        phase_names = {}
+        for phase_doc in db.collection_group("phases").stream():
+            phase_data = phase_doc.to_dict() or {}
+            model_ref = phase_doc.reference.parent.parent
+            if model_ref:
+                phase_names[(model_ref.id, phase_doc.id)] = phase_data.get("name", "")
 
         # Workbook rule: only a Completed unit that has passed QC consumes
         # material.  Each unit consumes the BOQ quantity-per-unit (reqQty).
@@ -100,11 +106,9 @@ def list_stock_register():
             model_id = model_ref.id if model_ref else ""
             if not model_id or model_id not in active_model_ids:
                 continue
-            phase_name = ""
-            try:
-                phase_name = (phase_ref.get().to_dict() or {}).get("name", "")
-            except Exception:
-                pass
+            # Read all phase names once above instead of fetching a parent
+            # phase document for every BOQ document.
+            phase_name = phase_names.get((model_id, phase_id), "")
             for row in boq.get("rows", []) or []:
                 code = row.get("code", "")
                 if not code:

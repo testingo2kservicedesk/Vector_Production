@@ -110,20 +110,19 @@ def list_defects():
         except (TypeError, ValueError):
             limit = 10
 
-        # Firestore offsets are acceptable here because this small admin list
-        # is explicitly page-based in the UI.  Materialize once so the total
-        # and the requested slice always describe the same result set.
-        defects = [_serialize(doc) for doc in defects_collection.order_by(
-            "createdAt", direction="DESCENDING"
-        ).stream()]
-        total_count = len(defects)
+        base_query = defects_collection.order_by("createdAt", direction="DESCENDING")
+        try:
+            total_count = base_query.count(alias="total").get()[0][0].value
+        except Exception:
+            # Compatibility fallback for older Firestore client libraries.
+            total_count = len(list(base_query.stream()))
         total_pages = max(1, math.ceil(total_count / limit))
         page = min(page, total_pages)
-        start = (page - 1) * limit
+        defects = [_serialize(doc) for doc in base_query.offset((page - 1) * limit).limit(limit).stream()]
 
         return jsonify({
             "success": True,
-            "defects": defects[start:start + limit],
+            "defects": defects,
             "pagination": {
                 "page": page,
                 "limit": limit,
