@@ -1,0 +1,24 @@
+.global-api-loader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  height: 3px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  pointer-events: none;
+}
+
+.global-api-loader span {
+  display: block;
+  width: 35%;
+  height: 100%;
+  background: var(--accent);
+  animation: global-api-loader-slide .85s ease-in-out infinite;
+}
+
+@keyframes global-api-loader-slide {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(315%); }
+}

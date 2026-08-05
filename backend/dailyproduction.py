@@ -122,6 +122,28 @@ def _sale_statuses_by_serial(docs):
     return statuses
 
 
+def _sale_statuses_for_serials(serials):
+    """Fetch sale status only for the assembly rows displayed on this page.
+
+    Reading the whole sale register for every Production page was increasingly
+    expensive as the register grew.  Firestore supports up to 30 values for
+    these queries, so chunk the page's serials and merge legacy ``serial`` and
+    current ``serialNumbers`` records.
+    """
+    serials = list({str(serial or "").strip() for serial in serials if str(serial or "").strip()})
+    if not serials:
+        return {}
+
+    docs_by_id = {}
+    for start in range(0, len(serials), 30):
+        batch = serials[start:start + 30]
+        for doc in sales_collection.where("serial", "in", batch).stream():
+            docs_by_id[doc.id] = doc
+        for doc in sales_collection.where("serialNumbers", "array_contains_any", batch).stream():
+            docs_by_id[doc.id] = doc
+    return _sale_statuses_by_serial(docs_by_id.values())
+
+
 def _serialize(doc, sale_status_by_serial=None):
     d = doc.to_dict()
     return {
@@ -292,14 +314,28 @@ def list_assembly_units():
     try:
         page, limit = _parse_pagination_params(request.args)
         base_query = assembly_collection.order_by("createdAt", direction="DESCENDING")
-        all_docs = list(base_query.stream())
         if request.user.get("role") == "user":
+            # Legacy assignment fields require a compatibility filter in
+            # Python. Managers use the paginated Firestore path below.
+            all_docs = list(base_query.stream())
             all_docs = [doc for doc in all_docs if _is_visible_to_current_user(doc.to_dict() or {})]
-        total_count = len(all_docs)
-        total_pages = max(1, math.ceil(total_count / limit))
-        page = min(page, total_pages)
-        sale_status_by_serial = _sale_statuses_by_serial(sales_collection.stream())
-        docs = all_docs[(page - 1) * limit:page * limit]
+            total_count = len(all_docs)
+            total_pages = max(1, math.ceil(total_count / limit))
+            page = min(page, total_pages)
+            docs = all_docs[(page - 1) * limit:page * limit]
+        else:
+            try:
+                total_count = base_query.count(alias="total").get()[0][0].value
+            except Exception:
+                # Retain compatibility with older Firestore clients.
+                total_count = len(list(base_query.stream()))
+            total_pages = max(1, math.ceil(total_count / limit))
+            page = min(page, total_pages)
+            docs = list(base_query.offset((page - 1) * limit).limit(limit).stream())
+
+        sale_status_by_serial = _sale_statuses_for_serials(
+            (doc.to_dict() or {}).get("serial", "") for doc in docs
+        )
         return jsonify({
             "success": True,
             "assemblyUnits": [_serialize(doc, sale_status_by_serial) for doc in docs],

@@ -137,6 +137,7 @@ import navConfig from "./data/navConfig";
 import LoginPage from "./pages/LoginPage";
 import ForgotPassword from "./pages/ForgotPassword";
 import api from "./components/Api";
+import GlobalApiLoader from "./components/GlobalApiLoader";
 
 import Dashboard from "./pages/Dashboard";
 import BOQ from "./pages/Model";
@@ -382,6 +383,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
+          <GlobalApiLoader />
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />
