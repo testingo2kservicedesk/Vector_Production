@@ -201,7 +201,7 @@ export default function Model() {
 
     const result = await swalConfirm({
       title: "Delete selected models?",
-      text: `Delete ${selectedIds.size} selected model(s)? This cannot be undone.`,
+      text: `Delete ${selectedIds.size} selected model(s), including all phases, BOQs, PO details, and invoices? This cannot be undone.`,
     });
     if (!result.isConfirmed) return;
 

@@ -11,6 +11,7 @@ models_collection = db.collection("models")
 # `item_codes` is the normalized catalog.  BOQ rows retain `code` for
 # backwards compatibility, while `itemCodeId` references this document.
 item_codes_collection = db.collection("item_codes")
+suppliers_collection = db.collection("suppliers")
 item_code_counter = db.collection("_counters").document("boq_item_codes")
 
 
@@ -20,6 +21,44 @@ def _delete_document_tree(document_ref):
         for child_doc in collection_ref.stream():
             _delete_document_tree(child_doc.reference)
     document_ref.delete()
+
+
+def _delete_linked_transactions(model_id, phase_ids=None):
+    """Remove PO and invoice records belonging to deleted model phases."""
+    phase_ids = set(phase_ids or [])
+
+    def belongs_to_deleted_scope(data):
+        if data.get("modelId") != model_id:
+            return False
+        return not phase_ids or data.get("phaseId") in phase_ids
+
+    deleted_po_details = 0
+    deleted_invoices = 0
+    for doc in db.collection("po_details").stream():
+        if belongs_to_deleted_scope(doc.to_dict() or {}):
+            doc.reference.delete()
+            deleted_po_details += 1
+    for doc in db.collection("invoices").stream():
+        if belongs_to_deleted_scope(doc.to_dict() or {}):
+            doc.reference.delete()
+            deleted_invoices += 1
+
+    return deleted_po_details, deleted_invoices
+
+
+def _save_suppliers(rows):
+    """Keep a reusable supplier catalogue from saved BOQ entries."""
+    for row in rows:
+        name = (row.get("vendor") or "").strip()
+        if not name:
+            continue
+        normalized_name = name.casefold()
+        if not suppliers_collection.where("normalizedName", "==", normalized_name).limit(1).get():
+            suppliers_collection.document().set({
+                "name": name,
+                "normalizedName": normalized_name,
+                "createdAt": datetime.now(timezone.utc),
+            })
 
 
 def _serialize(doc):
@@ -76,6 +115,19 @@ def list_models():
         return jsonify({"success": False, "message": f"Failed to fetch models: {exc}"}), 500
 
 
+@models_bp.route("/suppliers", methods=["GET"])
+@roles_required("admin", "coadmin")
+def list_suppliers():
+    try:
+        suppliers = [
+            (doc.to_dict() or {}).get("name", "").strip()
+            for doc in suppliers_collection.stream()
+        ]
+        return jsonify({"success": True, "suppliers": sorted({name for name in suppliers if name}, key=str.casefold)}), 200
+    except Exception as exc:
+        return jsonify({"success": False, "message": f"Failed to fetch suppliers: {exc}"}), 500
+
+
 @models_bp.route("/models/<model_id>", methods=["PUT"])
 @roles_required("admin")
 def update_model(model_id):
@@ -105,6 +157,7 @@ def update_model(model_id):
 @roles_required("admin")
 def delete_model(model_id):
     try:
+        _delete_linked_transactions(model_id)
         _delete_document_tree(models_collection.document(model_id))
         return jsonify({"success": True, "message": "Model deleted"}), 200
     except Exception as exc:
@@ -345,6 +398,13 @@ def list_item_codes():
     """Return all known Item Codes for the searchable BOQ combobox."""
     try:
         _sync_legacy_item_codes()
+        legacy_descriptions = {}
+        for boq_doc in db.collection_group("boqs").stream():
+            for row in (boq_doc.to_dict() or {}).get("rows", []) or []:
+                code = _normalise_item_code(row.get("code"))
+                description = (row.get("desc") or "").strip()
+                if code and description:
+                    legacy_descriptions.setdefault(code, description)
         item_codes = []
         for doc in item_codes_collection.stream():
             data = doc.to_dict() or {}
@@ -353,6 +413,7 @@ def list_item_codes():
                 item_codes.append({
                     "id": doc.id,
                     "code": code,
+                    "desc": data.get("desc", "") or legacy_descriptions.get(code, ""),
                     "createdAt": data.get("createdAt").isoformat() if data.get("createdAt") else None,
                 })
         item_codes.sort(key=lambda item: (
@@ -399,6 +460,11 @@ def _assign_global_item_codes(rows, existing_rows=None):
             raise ValueError(f"Item Code {code} does not exist. Select an existing code or create a new one.")
         row["code"] = code
         row["itemCodeId"] = code_doc.id
+        # An Item Code represents one material. Preserve its description so
+        # selecting the code in another BOQ can fill the material name.
+        description = (row.get("desc") or "").strip()
+        if description:
+            code_doc.reference.set({"desc": description}, merge=True)
 
     return prepared_rows
 
@@ -493,6 +559,7 @@ def create_boq(model_id, phase_id):
             return jsonify({"success": False, "message": "BOQ already exists for this phase"}), 409
 
         rows = _assign_global_item_codes(rows)
+        _save_suppliers(rows)
         doc_ref = boq_collection.document()
         created_at = datetime.now(timezone.utc)
         doc_ref.set({"rows": rows, "date": created_at})
@@ -550,6 +617,7 @@ def update_boq(model_id, phase_id, boq_id):
             return jsonify({"success": False, "message": "BOQ not found"}), 404
 
         rows = _assign_global_item_codes(rows, (existing_boq.to_dict() or {}).get("rows", []))
+        _save_suppliers(rows)
         boq_ref.update({"rows": rows})
         return jsonify({"success": True, "message": "BOQ updated"}), 200
     except Exception as exc:
@@ -624,6 +692,7 @@ def bulk_delete_models():
 
     for model_id in ids:
         try:
+            _delete_linked_transactions(model_id)
             _delete_document_tree(models_collection.document(model_id))
             deleted.append(model_id)
         except Exception:
@@ -654,6 +723,7 @@ def bulk_delete_phases(model_id):
 
     for phase_id in ids:
         try:
+            _delete_linked_transactions(model_id, [phase_id])
             _delete_document_tree(phases_collection.document(phase_id))
             deleted.append(phase_id)
         except Exception:

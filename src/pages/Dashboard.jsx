@@ -93,7 +93,7 @@ export default function Dashboard() {
   const isProductionIncharge = role === "production_incharge";
   const isProductionOnly = role === "user" || role === "production_incharge";
   const canViewSalesValue = role === "admin" || role === "coadmin";
-  const [activeView, setActiveView] = useState(() => isProductionOnly ? "production" : "sales");
+  const [activeView, setActiveView] = useState("production");
   const [qcRange, setQcRange] = useState("daily");
   const [userActivity, setUserActivity] = useState("qc");
   const [qcFromDate, setQcFromDate] = useState("");
@@ -391,9 +391,9 @@ export default function Dashboard() {
           <h2 className="dashboard-page-heading">Production &amp; sales overview</h2>
         </div>
         <div className="dashboard-tabs" data-active={activeView} data-single={isProductionOnly} role="tablist" aria-label="Dashboard views">
-          {!isProductionOnly && <button className={`dashboard-tab${activeView === "sales" ? " active" : ""}`} onClick={() => setActiveView("sales")} role="tab" aria-selected={activeView === "sales"}><TrendingUp size={16} /> Vector Sales</button>}
-          {!isProductionOnly && <button className={`dashboard-tab${activeView === "customerSales" ? " active" : ""}`} onClick={() => setActiveView("customerSales")} role="tab" aria-selected={activeView === "customerSales"}><TrendingUp size={16} /> Customer Sales</button>}
           <button className={`dashboard-tab${activeView === "production" ? " active" : ""}`} onClick={() => setActiveView("production")} role="tab" aria-selected={activeView === "production"}><Factory size={16} /> Production</button>
+          {!isProductionOnly && <button className={`dashboard-tab${activeView === "sales" ? " active" : ""}`} onClick={() => setActiveView("sales")} role="tab" aria-selected={activeView === "sales"}><TrendingUp size={16} /> Vector Sales</button>}
+          {!isProductionOnly && <button className={`dashboard-tab${activeView === "customerSales" ? " active" : ""}`} onClick={() => setActiveView("customerSales")} role="tab" aria-selected={activeView === "customerSales"}><TrendingUp size={16} /> O2K Sales</button>}
         </div>
       </header>
       <section className="dashboard-summary" aria-labelledby="operations-summary-title">
