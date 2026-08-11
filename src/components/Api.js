@@ -66,8 +66,13 @@ api.interceptors.request.use((config) => {
     // not show stale data after any create, edit, or deletion.
     getCache.clear();
     config.__vectorMutation = true;
-    activeMutations += 1;
-    publishMutationState();
+    // Inline forms can provide a clearer local saving state than the global
+    // blocking popup. They opt in with __vectorSuppressBusy.
+    if (!config.__vectorSuppressBusy) {
+      config.__vectorShowBusy = true;
+      activeMutations += 1;
+      publishMutationState();
+    }
   }
   try {
     const raw = sessionStorage.getItem(STORAGE_KEY);
@@ -90,12 +95,12 @@ api.interceptors.response.use(
       getCache.set(response.config.__vectorCacheKey, { data: copyData(response.data), savedAt: Date.now() });
     }
     if (response.config.__vectorRequest) { activeRequests = Math.max(0, activeRequests - 1); publishRequestState(); }
-    if (response.config.__vectorMutation) { activeMutations = Math.max(0, activeMutations - 1); publishMutationState(); }
+    if (response.config.__vectorShowBusy) { activeMutations = Math.max(0, activeMutations - 1); publishMutationState(); }
     return response;
   },
   (error) => {
     if (error.config?.__vectorRequest) { activeRequests = Math.max(0, activeRequests - 1); publishRequestState(); }
-    if (error.config?.__vectorMutation) { activeMutations = Math.max(0, activeMutations - 1); publishMutationState(); }
+    if (error.config?.__vectorShowBusy) { activeMutations = Math.max(0, activeMutations - 1); publishMutationState(); }
     if (error.response?.status === 401) {
       sessionStorage.removeItem(STORAGE_KEY);
       window.location.href = "/login";

@@ -48,17 +48,36 @@ def _delete_linked_transactions(model_id, phase_ids=None):
 
 def _save_suppliers(rows):
     """Keep a reusable supplier catalogue from saved BOQ entries."""
-    for row in rows:
-        name = (row.get("vendor") or "").strip()
-        if not name:
-            continue
-        normalized_name = name.casefold()
-        if not suppliers_collection.where("normalizedName", "==", normalized_name).limit(1).get():
-            suppliers_collection.document().set({
-                "name": name,
-                "normalizedName": normalized_name,
-                "createdAt": datetime.now(timezone.utc),
-            })
+    suppliers = {
+        (row.get("vendor") or "").strip().casefold(): (row.get("vendor") or "").strip()
+        for row in rows if (row.get("vendor") or "").strip()
+    }
+    if not suppliers:
+        return
+
+    # Firestore supports up to 10 values in an `in` query.  Query each chunk
+    # once and commit all missing suppliers in one batch instead of making a
+    # network round trip for every BOQ row.
+    existing = set()
+    normalized_names = list(suppliers)
+    for start in range(0, len(normalized_names), 10):
+        chunk = normalized_names[start:start + 10]
+        existing.update(
+            (doc.to_dict() or {}).get("normalizedName", "")
+            for doc in suppliers_collection.where("normalizedName", "in", chunk).stream()
+        )
+
+    batch = db.batch()
+    created_at = datetime.now(timezone.utc)
+    missing = [name for name in normalized_names if name not in existing]
+    for normalized_name in missing:
+        batch.set(suppliers_collection.document(), {
+            "name": suppliers[normalized_name],
+            "normalizedName": normalized_name,
+            "createdAt": created_at,
+        })
+    if missing:
+        batch.commit()
 
 
 def _serialize(doc):
@@ -378,14 +397,19 @@ def _create_next_item_code(transaction, minimum_last_number):
 
 def _generate_next_item_code():
     """Generate a code with transaction retries for concurrent requests."""
-    _sync_legacy_item_codes()
+    # The full legacy scan is needed only once, before the counter exists.
+    # Running it for every new code made the dropdown and BOQ saves slower as
+    # the BOQ collection grew.
+    counter_exists = item_code_counter.get().exists
+    if not counter_exists:
+        _sync_legacy_item_codes()
     # Firestore retries transaction contention itself.  The small outer retry
     # also covers a legacy document appearing between the catalog scan and
     # transaction commit.
     last_error = None
     for _ in range(3):
         try:
-            minimum = max(_highest_existing_item_code(), _highest_catalog_item_code())
+            minimum = max(_highest_existing_item_code(), _highest_catalog_item_code()) if not counter_exists else 0
             return _create_next_item_code(db.transaction(), minimum)
         except Exception as exc:
             last_error = exc
@@ -397,14 +421,6 @@ def _generate_next_item_code():
 def list_item_codes():
     """Return all known Item Codes for the searchable BOQ combobox."""
     try:
-        _sync_legacy_item_codes()
-        legacy_descriptions = {}
-        for boq_doc in db.collection_group("boqs").stream():
-            for row in (boq_doc.to_dict() or {}).get("rows", []) or []:
-                code = _normalise_item_code(row.get("code"))
-                description = (row.get("desc") or "").strip()
-                if code and description:
-                    legacy_descriptions.setdefault(code, description)
         item_codes = []
         for doc in item_codes_collection.stream():
             data = doc.to_dict() or {}
@@ -413,7 +429,7 @@ def list_item_codes():
                 item_codes.append({
                     "id": doc.id,
                     "code": code,
-                    "desc": data.get("desc", "") or legacy_descriptions.get(code, ""),
+                    "desc": data.get("desc", ""),
                     "createdAt": data.get("createdAt").isoformat() if data.get("createdAt") else None,
                 })
         item_codes.sort(key=lambda item: (
@@ -439,7 +455,6 @@ def generate_item_code():
 
 def _assign_global_item_codes(rows, existing_rows=None):
     """Resolve BOQ rows to catalog Item Codes, preserving legacy payloads."""
-    _sync_legacy_item_codes()
     prepared_rows = [dict(row) for row in rows]
     rows_needing_codes = [
         row for row in prepared_rows if not _normalise_item_code(row.get("code"))
@@ -451,20 +466,25 @@ def _assign_global_item_codes(rows, existing_rows=None):
             row["code"] = generated["code"]
             row["itemCodeId"] = generated["id"]
 
+    codes = {_normalise_item_code(row.get("code")) for row in prepared_rows}
+    if "" in codes:
+        raise ValueError("Item Code cannot be blank or contain a slash")
+    code_docs = {doc.id: doc for doc in db.get_all([_item_code_ref(code) for code in codes])}
+    missing_codes = sorted(code for code in codes if code not in code_docs or not code_docs[code].exists)
+    if missing_codes:
+        raise ValueError(f"Item Code {missing_codes[0]} does not exist. Select an existing code or create a new one.")
+
+    batch = db.batch()
     for row in prepared_rows:
         code = _normalise_item_code(row.get("code"))
-        if not code:
-            raise ValueError("Item Code cannot be blank or contain a slash")
-        code_doc = _item_code_ref(code).get()
-        if not code_doc.exists:
-            raise ValueError(f"Item Code {code} does not exist. Select an existing code or create a new one.")
+        code_doc = code_docs[code]
         row["code"] = code
         row["itemCodeId"] = code_doc.id
-        # An Item Code represents one material. Preserve its description so
-        # selecting the code in another BOQ can fill the material name.
         description = (row.get("desc") or "").strip()
         if description:
-            code_doc.reference.set({"desc": description}, merge=True)
+            batch.set(code_doc.reference, {"desc": description}, merge=True)
+    if prepared_rows:
+        batch.commit()
 
     return prepared_rows
 

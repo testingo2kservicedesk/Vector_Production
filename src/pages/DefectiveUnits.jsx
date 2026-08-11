@@ -24,6 +24,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ArrowLeft,
+  ExternalLink,
 } from "lucide-react";
 import SearchBar from "../components/SearchBar";
 import PageFilter, { matchesPageFilter } from "../components/PageFilter";
@@ -1142,11 +1144,39 @@ export default function DefectiveUnits() {
           {lightboxImage && (
             <div
               className="details-modal-lightbox"
-              onClick={(e) => {
-                e.stopPropagation();
-                setLightboxImage(null);
-              }}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Image preview: ${lightboxImage.name}`}
             >
+              <div className="details-modal-lightbox-header">
+                <button
+                  type="button"
+                  className="details-modal-lightbox-back"
+                  onClick={() => setLightboxImage(null)}
+                >
+                  <ArrowLeft size={18} />
+                  Back to details
+                </button>
+                <div className="details-modal-lightbox-actions">
+                  <a
+                    className="details-modal-lightbox-open"
+                    href={lightboxImage.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink size={17} />
+                    Open in new tab
+                  </a>
+                  <button
+                    type="button"
+                    className="details-modal-lightbox-close"
+                    onClick={requestCloseView}
+                    aria-label="Close image preview"
+                  >
+                    <X size={21} />
+                  </button>
+                </div>
+              </div>
               <img src={lightboxImage.url} alt={lightboxImage.name} />
             </div>
           )}

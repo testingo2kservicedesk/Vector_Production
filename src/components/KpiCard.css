@@ -5,45 +5,57 @@
   flex-direction: column;
   gap: 6px;
   overflow: hidden;
-  padding: 14px;
+  padding: 14px 14px 14px 16px;
   border: 1px solid var(--border);
+  border-left: 3px solid var(--dash-neutral-border);
   border-radius: var(--r-md);
   background: var(--bg-surface);
-  box-shadow: none;
-  transition: border-color 150ms ease;
+  box-shadow: var(--dash-card-shadow);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
 }
 
 .kpi-card:hover {
-  transform: none;
-  box-shadow: none;
+  box-shadow: var(--dash-card-shadow-hover);
   border-color: var(--accent-soft-border);
+  border-left-color: var(--accent);
+  transform: translateY(-1px);
 }
 
 .kpi-card--attention {
-  border-color: var(--color-danger);
+  border-left-color: var(--color-danger);
+  border-color: var(--dash-danger-border);
+  background: var(--dash-danger-tint);
 }
 
 .kpi-icon {
   display: grid;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   place-items: center;
-  border: 1px solid var(--border);
+  border: 1px solid var(--dash-neutral-border);
   border-radius: var(--r-sm);
-  background: var(--color-neutral-bg);
-  color: var(--color-neutral);
+  background: var(--dash-neutral-icon-bg);
+  color: var(--dash-neutral-icon-fg);
 }
 
 .kpi-card--success .kpi-icon {
-  border-color: var(--color-success);
-  background: var(--color-success-bg);
-  color: var(--color-success);
+  border-color: var(--dash-success-border);
+  background: var(--dash-success-icon-bg);
+  color: var(--dash-success-icon-fg);
 }
 
 .kpi-card--danger .kpi-icon {
-  border-color: var(--color-danger);
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
+  border-color: var(--dash-danger-border);
+  background: var(--dash-danger-icon-bg);
+  color: var(--dash-danger-icon-fg);
+}
+
+.kpi-card--success {
+  border-left-color: var(--dash-success-border);
+}
+
+.kpi-card--danger {
+  border-left-color: var(--dash-danger-border);
 }
 
 .kpi-value {
@@ -71,7 +83,7 @@
 }
 
 .kpi-card--danger .kpi-context {
-  color: var(--color-danger-text);
+  color: var(--dash-danger-icon-fg);
   font-weight: 600;
 }
 
