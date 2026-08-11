@@ -53,7 +53,7 @@ def create_app():
         "https://vector-app-884203903500.asia-south1.run.app,"
         "https://production.vector-power.com,"
         "http://localhost:3001,"
-        "http://localhost:3003"
+        "http://localhost:3002"
     ).split(",")
 
     CORS(

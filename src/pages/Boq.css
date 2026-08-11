@@ -161,6 +161,10 @@
   letter-spacing: 0.05em;
   color: var(--text-secondary);
 }
+.boq-item-card-actions { display: flex; align-items: center; gap: 8px; }
+.boq-item-save { display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border: 1px solid var(--accent); border-radius: var(--r-sm); background: var(--accent); color: var(--accent-contrast); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.boq-item-save:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.boq-item-save:disabled { opacity: 0.65; cursor: not-allowed; }
 
 .icon-btn {
   display: inline-flex;

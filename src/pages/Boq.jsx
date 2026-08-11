@@ -14,6 +14,14 @@ import "./Boq.css";
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "";
 const PAGE_SIZE = 10;
+
+// These catalogues are shared by every BOQ editor opened in this browser tab.
+// They change rarely, so reusing them avoids a Firestore request every time a
+// user opens Edit BOQ.
+let itemCodesCache = null;
+let itemCodesRequest = null;
+let suppliersCache = null;
+let suppliersRequest = null;
 const CREATE_NEW_ITEM_CODE = "__create_new_item_code__";
 
 // ---- Themed SweetAlert2 helpers (brand colors, shared across this page) ----
@@ -105,9 +113,11 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
     [phaseName, phaseItemCode, phaseItemCodeId, rows]
   );
   const [draftRows, setDraftRows] = useState(initialDraftRows);
+  const [savedRows, setSavedRows] = useState(initialDraftRows);
   const [closing, setClosing] = useState(false);
   const [confirmingClose, setConfirmingClose] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingRowIndex, setSavingRowIndex] = useState(null);
   const [error, setError] = useState("");
   const [itemCodes, setItemCodes] = useState([]);
   const [itemCodesLoading, setItemCodesLoading] = useState(true);
@@ -115,6 +125,7 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
 
   useEffect(() => {
     setDraftRows(initialDraftRows);
+    setSavedRows(initialDraftRows);
   }, [initialDraftRows]);
 
   // The catalog endpoint also performs a safe, one-time backfill of codes
@@ -125,12 +136,20 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
     const loadItemCodes = async () => {
       setItemCodesLoading(true);
       try {
-        const response = await api.get(`${API_BASE_URL}/item-codes`);
-        if (!response.data.success) throw new Error(response.data.message || "Failed to load Item Codes");
+        if (!itemCodesCache) {
+          itemCodesRequest ||= api.get(`${API_BASE_URL}/item-codes`)
+            .then((response) => {
+              if (!response.data.success) throw new Error(response.data.message || "Failed to load Item Codes");
+              itemCodesCache = response.data.itemCodes || [];
+              return itemCodesCache;
+            })
+            .finally(() => { itemCodesRequest = null; });
+          await itemCodesRequest;
+        }
 
         // Codes are only created from the explicit action in the dropdown.
         // This avoids reserving unused codes just by opening Add/Edit BOQ.
-        if (!cancelled) setItemCodes(response.data.itemCodes || []);
+        if (!cancelled) setItemCodes(itemCodesCache);
       } catch (err) {
         if (!cancelled) setError(err.response?.data?.message || err.message || "Failed to load Item Codes");
       } finally {
@@ -146,8 +165,17 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
     let cancelled = false;
     const loadSuppliers = async () => {
       try {
-        const response = await api.get(`${API_BASE_URL}/suppliers`);
-        if (response.data.success && !cancelled) setSuppliers(response.data.suppliers || []);
+        if (!suppliersCache) {
+          suppliersRequest ||= api.get(`${API_BASE_URL}/suppliers`)
+            .then((response) => {
+              if (!response.data.success) throw new Error(response.data.message || "Failed to load suppliers");
+              suppliersCache = response.data.suppliers || [];
+              return suppliersCache;
+            })
+            .finally(() => { suppliersRequest = null; });
+          await suppliersRequest;
+        }
+        if (!cancelled) setSuppliers(suppliersCache);
       } catch {
         // The field still accepts a new supplier if suggestions cannot load.
       }
@@ -218,7 +246,9 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
       const response = await api.post(`${API_BASE_URL}/item-codes/generate`);
       if (!response.data.success) throw new Error(response.data.message || "Failed to generate Item Code");
       const created = response.data.itemCode;
-      setItemCodes((current) => [...current, created].sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })));
+      const nextItemCodes = [...itemCodes, created].sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+      itemCodesCache = nextItemCodes;
+      setItemCodes(nextItemCodes);
       updateField(rowIndex, "code", created.code);
       updateField(rowIndex, "itemCodeId", created.id);
     } catch (err) {
@@ -259,6 +289,29 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
     }
   };
 
+  const handleSaveItem = async (rowIndex) => {
+    setError("");
+    const row = withCalculatedFields({ ...draftRows[rowIndex], phase: draftRows[rowIndex].phase || phaseName });
+    if (!row.desc.trim()) {
+      setError(`Item ${rowIndex + 1} needs an item description before it can be saved.`);
+      return;
+    }
+    if (!row.code) {
+      setError(`Item ${rowIndex + 1} needs an Item Code before it can be saved.`);
+      return;
+    }
+
+    const nextSavedRows = rowIndex < savedRows.length
+      ? savedRows.map((savedRow, index) => index === rowIndex ? row : savedRow)
+      : [...savedRows, row];
+
+    setSavingRowIndex(rowIndex);
+    const ok = await onSave(nextSavedRows, { keepEditorOpen: true });
+    setSavingRowIndex(null);
+    if (ok) setSavedRows(nextSavedRows);
+    else setError(`Failed to save item ${rowIndex + 1}.`);
+  };
+
   return createPortal(
     <div
       className={`modal-overlay${closing ? " closing" : ""}`}
@@ -294,15 +347,26 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
             <div className="boq-item-card" key={rowIndex}>
               <div className="boq-item-card-header">
                 <span className="boq-item-number">Item {rowIndex + 1}</span>
-                <button
-                  type="button"
-                  className="icon-btn boq-item-remove"
-                  onClick={() => removeRow(rowIndex)}
-                  disabled={draftRows.length === 1}
-                  aria-label={`Remove item ${rowIndex + 1}`}
-                >
-                  <Trash2 size={15} />
-                </button>
+                <div className="boq-item-card-actions">
+                  <button
+                    type="button"
+                    className="boq-item-save"
+                    onClick={() => handleSaveItem(rowIndex)}
+                    disabled={saving || savingRowIndex !== null}
+                  >
+                    {savingRowIndex === rowIndex ? <Loader2 size={14} className="spin" /> : <Save size={14} />}
+                    {savingRowIndex === rowIndex ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn boq-item-remove"
+                    onClick={() => removeRow(rowIndex)}
+                    disabled={draftRows.length === 1 || saving || savingRowIndex !== null}
+                    aria-label={`Remove item ${rowIndex + 1}`}
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
               </div>
 
               <div className="boq-field-grid">
@@ -441,7 +505,7 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
             disabled={saving}
           >
             {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
-            {saving ? "Saving..." : "Save BOQ"}
+            {saving ? "Saving..." : "Save Overall"}
           </button>
         </div>
       </div>
@@ -533,40 +597,59 @@ export default function BOQ({ model, phase, modelId, phaseId, onBack, readOnly =
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredRows = useMemo(() => {
-    const rows = boq?.rows || [];
+  const filterBoqRows = useCallback((rows) => {
     const q = query.trim().toLowerCase();
     return rows.filter((row) => {
       const matchesSearch = !q || BOQ_COLUMNS.some((column) => String(row[column.key] ?? "").toLowerCase().includes(q));
       return matchesSearch && matchesPageFilter(row, pageFilter, BOQ_FILTER_FIELDS);
     });
-  }, [boq, query, pageFilter]);
+  }, [query, pageFilter]);
+
+  // The table stays paginated, but exports must include every BOQ row that
+  // matches the active search/filter across all pages.
+  const filteredRows = useMemo(
+    () => filterBoqRows(boq?.rows || []),
+    [boq, filterBoqRows]
+  );
+  const exportRows = useMemo(
+    () => filterBoqRows(boq?.allRows || boq?.rows || []),
+    [boq, filterBoqRows]
+  );
 
   const persistRows = useCallback(async (rows) => {
     if (boq?.id) {
-      await api.put(
+      return api.put(
         `${API_BASE_URL}/models/${resolvedModelId}/phases/${resolvedPhaseId}/boq/${boq.id}`,
-        { rows }
-      );
-    } else {
-      await api.post(
-        `${API_BASE_URL}/models/${resolvedModelId}/phases/${resolvedPhaseId}/boq`,
-        { rows }
+        { rows },
+        { __vectorSuppressBusy: true }
       );
     }
+      return api.post(
+        `${API_BASE_URL}/models/${resolvedModelId}/phases/${resolvedPhaseId}/boq`,
+        { rows },
+        { __vectorSuppressBusy: true }
+      );
   }, [boq, resolvedModelId, resolvedPhaseId]);
 
   // Create vs update messaging is decided *before* the save, since after
   // persistRows() succeeds boq.id will always be truthy either way.
-  const handleSave = async (rows) => {
+  const handleSave = async (rows, { keepEditorOpen = false } = {}) => {
     const wasExisting = Boolean(boq?.id);
     try {
       await persistRows(rows);
-      await loadBoq({ targetPage: 1, silent: true });
-      setPage(1);
-      setEditorOpen(false);
+      if (keepEditorOpen) {
+        setBoq((current) => current ? {
+          ...current,
+          allRows: rows,
+          rows: rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+        } : current);
+      } else {
+        await loadBoq({ targetPage: 1, silent: true });
+        setPage(1);
+      }
+      if (!keepEditorOpen) setEditorOpen(false);
       swalSuccess(
-        wasExisting ? "BOQ updated" : "BOQ created",
+        keepEditorOpen ? "BOQ item saved" : (wasExisting ? "BOQ updated" : "BOQ created"),
         wasExisting
           ? `The BOQ for ${phaseName} has been updated with ${rows.length} item(s).`
           : `The BOQ for ${phaseName} has been created with ${rows.length} item(s).`
@@ -804,7 +887,7 @@ export default function BOQ({ model, phase, modelId, phaseId, onBack, readOnly =
                 mode="table"
                 title={`${phaseName} BOQ`}
                 columns={BOQ_COLUMNS}
-                rows={filteredRows}
+                rows={exportRows}
                 fileName={`${phaseName}-boq`}
               />
             </div>
