@@ -50,6 +50,8 @@ api.interceptors.request.use((config) => {
   publishRequestState();
   const method = String(config.method || "get").toLowerCase();
   if (method === "get") {
+    // The global loader represents page data loading only. Saves already use
+    // their own busy state and must not leave the page loader visible.
     const key = cacheKey(config);
     const cached = getCache.get(key);
     if (cached && Date.now() - cached.savedAt < GET_CACHE_TTL_MS) {

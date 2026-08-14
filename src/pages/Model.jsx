@@ -66,7 +66,7 @@ export default function Model() {
     setError("");
 
     try {
-      const response = await api.get(`${API_BASE_URL}/models`);
+      const response = await api.get(`${API_BASE_URL}/models`, { __vectorSuppressLoader: true });
       if (response.data.success) {
         setModels(response.data.models || []);
       } else {

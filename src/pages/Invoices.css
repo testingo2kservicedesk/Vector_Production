@@ -142,6 +142,16 @@
 @keyframes modalSlideOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(10px) scale(0.98); } }
 
 .invoices-form { padding: 22px 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 4px; box-sizing: border-box; }
+.invoice-entry-modal .invoices-form { min-height: 0; padding: 22px 24px 30px; scrollbar-gutter: stable; }
+.invoice-entry-modal .boq-item-card { margin: 0 0 22px; border: 1px solid var(--accent-soft-border); box-shadow: none; }
+.invoice-entry-modal .boq-item-card .invoices-form-grid { padding: 18px 22px 22px; }
+.invoice-entry-modal .po-new-line-heading {
+  display: flex; align-items: center; margin: 4px 0 2px; padding: 14px 22px;
+  border: 1px solid var(--border); border-bottom: 0; border-radius: var(--r-md) var(--r-md) 0 0;
+  background: var(--bg-table-stripe); color: var(--text-secondary); font-size: 12px;
+  font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+}
+.invoice-entry-modal .po-new-line-heading + .invoices-form-grid { padding-top: 20px; }
 .invoices-form-error { background: var(--accent-soft-bg); border: 1px solid var(--accent-soft-border); color: var(--accent); padding: 10px 14px; border-radius: var(--r-md); font-size: 13px; font-weight: 600; margin-bottom: 16px; }
 
 .invoices-form-grid, .invoices-form-grid * { box-sizing: border-box; }

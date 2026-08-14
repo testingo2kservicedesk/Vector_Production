@@ -4,6 +4,7 @@
 .po-entry-modal:has(.app-date-picker-popover) { overflow: visible !important; }
 .po-entry-modal:has(.app-date-picker-popover) .modal-header { border-radius: var(--r-xl) var(--r-xl) 0 0; }
 .po-entry-modal:has(.app-date-picker-popover) .modal-footer { border-radius: 0 0 var(--r-xl) var(--r-xl); }
+.po-entry-modal .po-form:has(.app-date-picker-popover) { overflow: visible !important; }
 
 .po-toolbar {
   display: flex;
@@ -238,6 +239,38 @@
 @keyframes po-details-dialog-out { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(10px) scale(0.98); } }
 
 /* ADD PO FORM */
+.po-entry-modal .po-form {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 22px 22px 30px;
+  scrollbar-gutter: stable;
+}
+.po-entry-modal .boq-item-card {
+  margin: 0 0 22px;
+  border: 1px solid var(--accent-soft-border);
+  box-shadow: none;
+}
+.po-entry-modal .boq-item-card .po-form-grid { padding: 18px 22px 22px; }
+.po-new-line-heading {
+  display: flex;
+  align-items: center;
+  margin: 4px 0 2px;
+  padding: 14px 22px;
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: var(--r-md) var(--r-md) 0 0;
+  background: var(--bg-table-stripe);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.po-new-line-heading + .po-form-grid { padding-top: 20px; }
+.po-entry-modal .po-form::-webkit-scrollbar,
+.invoice-entry-modal .invoices-form::-webkit-scrollbar { width: 9px; }
+.po-entry-modal .po-form::-webkit-scrollbar-thumb,
+.invoice-entry-modal .invoices-form::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
 .po-form-error {
   background: var(--accent-soft-bg);
   border: 1px solid var(--accent-soft-border);
