@@ -91,7 +91,7 @@ def create_invoice():
                 "createdAt": created_at.isoformat(),
                 "updatedAt": created_at.isoformat(),
             },
-        }), 201
+        }), 200
     except Exception as exc:
         return jsonify({"success": False, "message": f"Failed to create Invoice: {exc}"}), 500
  

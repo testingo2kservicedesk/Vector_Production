@@ -113,6 +113,18 @@ const emptyInvoiceForm = {
   qtyRecv: "",
   verifiedBy: "",
 };
+
+// Keep the selected invoice and PO context while preparing the next item.
+const nextInvoiceLineForm = (values) => ({
+  ...emptyInvoiceForm,
+  invoice: values.invoice,
+  date: values.date,
+  modelId: values.modelId,
+  phaseId: values.phaseId,
+  phase: values.phase,
+  po: values.po,
+  verifiedBy: values.verifiedBy,
+});
  
 const REQUIRED_FIELDS = [
   { name: "invoice", label: "Invoice No" },
@@ -186,6 +198,8 @@ export default function Invoices() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [closing, setClosing] = useState(false);
   const [formValues, setFormValues] = useState(emptyInvoiceForm);
+  const [savedNewLines, setSavedNewLines] = useState([]);
+  const [editingSavedId, setEditingSavedId] = useState(null);
   const initialFormValuesRef = useRef(emptyInvoiceForm);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -307,6 +321,8 @@ export default function Invoices() {
     setIsEditMode(false);
     initialFormValuesRef.current = emptyInvoiceForm;
     setFormValues(emptyInvoiceForm);
+    setSavedNewLines([]);
+    setEditingSavedId(null);
     setFormError("");
     setClosing(false);
     setModalOpen(true);
@@ -351,6 +367,8 @@ export default function Invoices() {
       setModalOpen(false);
       setClosing(false);
       setFormValues(emptyInvoiceForm);
+      setSavedNewLines([]);
+      setEditingSavedId(null);
       setFormError("");
       setIsEditMode(false);
     }, 220);
@@ -434,9 +452,18 @@ export default function Invoices() {
   }, [viewOpen]);
  
   // ---------- Save/Update Invoice record to the backend, then refresh the table ----------
-  const handleSave = async () => {
+  const handleSave = async (addNew = false) => {
     if (saving) return;
- 
+
+    // "Save & Add New" leaves a blank next line ready for use.  If the user
+    // chooses Save All & Close without entering that line, close directly;
+    // every card above has already been persisted.
+    const currentLineIsBlank = !formValues.code && !formValues.desc && !formValues.qtyInv && !formValues.qtyRecv;
+    if (!addNew && !isEditMode && !editingSavedId && savedNewLines.length > 0 && currentLineIsBlank) {
+      requestClose(true);
+      return;
+    }
+
     const error = validateInvoiceForm(formValues);
     if (error) {
       setFormError(error);
@@ -450,8 +477,8 @@ export default function Invoices() {
       const payload = { ...formValues };
       let res;
  
-      if (isEditMode) {
-        res = await api.put(`${API_BASE_URL}/invoices/${formValues.id}`, payload);
+      if (isEditMode || editingSavedId) {
+        res = await api.put(`${API_BASE_URL}/invoices/${isEditMode ? formValues.id : editingSavedId}`, payload);
       } else {
         res = await api.post(`${API_BASE_URL}/invoices`, payload);
       }
@@ -461,17 +488,47 @@ export default function Invoices() {
       }
  
       setSaving(false);
-      requestClose(true);
+      if (addNew && !isEditMode) {
+        const nextValues = nextInvoiceLineForm(formValues);
+        const savedLine = res.data.invoice || { ...formValues, id: editingSavedId };
+        setSavedNewLines((previous) => [...previous.filter((line) => line.id !== editingSavedId), savedLine]);
+        setEditingSavedId(null);
+        initialFormValuesRef.current = nextValues;
+        setFormValues(nextValues);
+        await swalSuccess("Invoice Saved", "Enter the next item below.");
+      } else {
+        requestClose(true);
  
-      await swalSuccess(
-        isEditMode ? "Invoice Updated" : "Invoice Saved",
-        `The Invoice has been ${isEditMode ? "updated" : "saved"} successfully.`
-      );
+        await swalSuccess(
+          isEditMode ? "Invoice Updated" : "Invoice Saved",
+          `The Invoice has been ${isEditMode ? "updated" : "saved"} successfully.`
+        );
+      }
  
       await fetchInvoices({ silent: true, targetPage: page });
     } catch (err) {
       setSaving(false);
       setFormError(extractErrorMessage(err, "Something went wrong while saving. Please try again."));
+    }
+  };
+
+  const editSavedLine = (line) => {
+    setFormValues({ ...line });
+    setEditingSavedId(line.id);
+    setFormError("");
+  };
+
+  const deleteSavedLine = async (line) => {
+    if (!line.id) return;
+    try {
+      await api.delete(`${API_BASE_URL}/invoices/${line.id}`);
+      setSavedNewLines((previous) => previous.filter((item) => item.id !== line.id));
+      if (editingSavedId === line.id) {
+        setEditingSavedId(null);
+        setFormValues(nextInvoiceLineForm(line));
+      }
+    } catch (err) {
+      setFormError(extractErrorMessage(err, "Unable to delete this saved Invoice."));
     }
   };
  
@@ -765,8 +822,38 @@ export default function Invoices() {
               }}
             >
               {formError && <div className="invoices-form-error">{formError}</div>}
- 
-              <div className="invoices-form-grid">
+
+              {savedNewLines.map((line, index) => (
+                <section className="boq-item-card" key={`${line.invoice}-${line.po}-${line.code}-${index}`}>
+                  {(() => {
+                    const editingThisLine = editingSavedId === line.id;
+                    const values = editingThisLine ? formValues : line;
+                    return <>
+                  <div className="boq-item-card-header">
+                    <span className="boq-item-number">Invoice Detail {index + 1} — {editingThisLine ? "Editing" : "Saved"}</span>
+                    <div className="boq-item-card-actions">
+                      <button type="button" className="boq-item-save" onClick={() => editingThisLine ? handleSave(true) : editSavedLine(line)}><Pencil size={14} /> {editingThisLine ? "Save changes" : "Edit"}</button>
+                      <button type="button" className="icon-btn boq-item-remove" onClick={() => deleteSavedLine(line)} aria-label={`Delete Invoice Detail ${index + 1}`}><Trash2 size={15} /></button>
+                    </div>
+                  </div>
+                  <div className="invoices-form-grid">
+                    <label className="invoices-field"><span>Invoice No</span><input name="invoice" value={values.invoice} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="invoices-field"><span>Invoice Date</span><input name="date" value={values.date} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="invoices-field"><span>Phase</span><input name="phase" value={values.phase} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="invoices-field"><span>PO No</span><input name="po" value={values.po} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="invoices-field"><span>Item Code</span><input name="code" value={values.code} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="invoices-field invoices-field-span2"><span>Item Description</span><input name="desc" value={values.desc} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="invoices-field"><span>Qty Invoiced</span><input name="qtyInv" value={values.qtyInv} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="invoices-field"><span>Qty Received</span><input name="qtyRecv" value={values.qtyRecv} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                  </div>
+                    </>;
+                  })()}
+                </section>
+              ))}
+
+              {savedNewLines.length > 0 && <div className="po-new-line-heading"><span>{editingSavedId ? "Edit Invoice Detail" : "New Invoice Detail"}</span></div>}
+
+              {!editingSavedId && <div className="invoices-form-grid">
                 <label className="invoices-field">
                   <span>Invoice No <span className="invoices-required-asterisk">*</span></span>
                   <input
@@ -864,21 +951,32 @@ export default function Invoices() {
                     placeholder="e.g. A. Sharma"
                   />
                 </label>
-              </div>
+              </div>}
             </form>
  
             <div className="modal-footer">
               <button type="button" className="invoices-btn-secondary" onClick={requestClose} disabled={saving}>
                 Cancel
               </button>
+              {!isEditMode && (
+                <button
+                  type="button"
+                  className="invoices-btn-secondary"
+                  onClick={() => handleSave(true)}
+                  disabled={saving || formIsIncomplete}
+                >
+                  {saving ? <Loader2 size={16} className="spin" /> : <Plus size={16} />}
+                  {saving ? "Saving..." : "Save & Add New"}
+                </button>
+              )}
               <button
                 type="button"
                 className="invoices-btn-primary"
-                onClick={handleSave}
+                onClick={() => handleSave(false)}
                 disabled={saving || formIsIncomplete}
               >
                 {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
-                {saving ? "Saving..." : isEditMode ? "Update" : "Save"}
+                {saving ? "Saving..." : isEditMode ? "Update" : "Save All & Close"}
               </button>
             </div>
           </div>

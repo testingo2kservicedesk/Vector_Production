@@ -5,6 +5,20 @@
     <link rel="icon" type="image/png" href="%PUBLIC_URL%/images/vector.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#f6c400" />
+    <script>
+      (function () {
+        try {
+          var savedTheme = window.localStorage.getItem("pbd-theme");
+          var theme = savedTheme === "light" || savedTheme === "dark"
+            ? savedTheme
+            : (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          document.documentElement.setAttribute("data-theme", theme);
+          document.documentElement.style.colorScheme = theme;
+        } catch (error) {
+          // Keep the light-theme default if storage is unavailable.
+        }
+      })();
+    </script>
     <meta
       name="description"
       content="Vector-App"

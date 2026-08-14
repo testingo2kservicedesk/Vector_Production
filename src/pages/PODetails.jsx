@@ -117,6 +117,19 @@ const emptyPoForm = {
   status: "",
 };
 
+// A PO commonly contains more than one item.  Retain its shared details
+// while clearing the item-specific fields for the next entry.
+const nextPoLineForm = (values) => ({
+  ...emptyPoForm,
+  modelId: values.modelId,
+  phaseId: values.phaseId,
+  phase: values.phase,
+  po: values.po,
+  date: values.date,
+  expectedDeliveryDate: values.expectedDeliveryDate,
+  status: values.status,
+});
+
 const REQUIRED_FIELDS = [
   { name: "phase", label: "Phase" },
   { name: "po", label: "PO No" },
@@ -234,6 +247,8 @@ export default function PODetails() {
   const [modalOpen, setModalOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [formValues, setFormValues] = useState(emptyPoForm);
+  const [savedNewLines, setSavedNewLines] = useState([]);
+  const [editingSavedId, setEditingSavedId] = useState(null);
   const [formError, setFormError] = useState("");
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -418,7 +433,10 @@ export default function PODetails() {
       if (!res.data.success) {
         throw new Error(res.data.message || "Failed to load BOQ items");
       }
-      setBoqItems(res.data.boq?.rows || []);
+      // The BOQ endpoint paginates `rows` for tables but also returns the
+      // complete list in `allRows`. Item-code selection must use every BOQ
+      // item in the selected phase, not just the first page (10 by default).
+      setBoqItems(res.data.boq?.allRows || res.data.boq?.rows || []);
     } catch (err) {
       setBoqItemsError(extractErrorMessage(err, "Failed to load BOQ items"));
       setBoqItems([]);
@@ -494,6 +512,8 @@ export default function PODetails() {
 
   const openModal = () => {
     setFormValues(emptyPoForm);
+    setSavedNewLines([]);
+    setEditingSavedId(null);
     setFormError("");
     setClosing(false);
     setBoqItems([]);
@@ -519,6 +539,8 @@ export default function PODetails() {
       setModalOpen(false);
       setClosing(false);
       setFormValues(emptyPoForm);
+      setSavedNewLines([]);
+      setEditingSavedId(null);
       setFormError("");
       setBoqItems([]);
       setBoqItemsError("");
@@ -530,8 +552,17 @@ export default function PODetails() {
     setFormValues((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (addNew = false) => {
     if (saving) return;
+
+    // After one or more lines were saved with "Save & Add New", the editor
+    // below is intentionally blank.  There is nothing left to validate in
+    // that case; simply close the completed PO popup.
+    const currentLineIsBlank = !formValues.code && !formValues.desc && !formValues.qty;
+    if (!addNew && !editingSavedId && savedNewLines.length > 0 && currentLineIsBlank) {
+      requestClose(true);
+      return;
+    }
 
     const error = validatePoForm(formValues);
     if (error) {
@@ -545,13 +576,23 @@ export default function PODetails() {
     try {
       const payload = { ...formValues, status: formValues.status || null };
 
-      const res = await api.post(`${API_BASE_URL}/po-details`, payload);
+      const res = editingSavedId
+        ? await api.put(`${API_BASE_URL}/po-details/${editingSavedId}`, payload)
+        : await api.post(`${API_BASE_URL}/po-details`, payload);
       if (!res.data.success) {
         throw new Error(res.data.message || "Failed to save PO Detail");
       }
 
-      requestClose(true);
-      await swalSuccess("PO Detail Saved", "The PO Detail has been saved successfully.");
+      if (addNew) {
+        const savedLine = res.data.po || { ...formValues, id: editingSavedId };
+        setSavedNewLines((previous) => [...previous.filter((line) => line.id !== editingSavedId), savedLine]);
+        setFormValues(nextPoLineForm(formValues));
+        setEditingSavedId(null);
+        await swalSuccess("PO Detail Saved", "Enter the next item below.");
+      } else {
+        requestClose(true);
+        await swalSuccess("PO Detail Saved", "The PO Detail has been saved successfully.");
+      }
 
       if (page === 1) {
         await fetchPoDetails({ silent: true, targetPage: 1 });
@@ -562,6 +603,26 @@ export default function PODetails() {
       setFormError(extractErrorMessage(err, "Something went wrong while saving. Please try again."));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const editSavedLine = (line) => {
+    setFormValues({ ...line });
+    setEditingSavedId(line.id);
+    setFormError("");
+  };
+
+  const deleteSavedLine = async (line) => {
+    if (!line.id) return;
+    try {
+      await api.delete(`${API_BASE_URL}/po-details/${line.id}`);
+      setSavedNewLines((previous) => previous.filter((item) => item.id !== line.id));
+      if (editingSavedId === line.id) {
+        setEditingSavedId(null);
+        setFormValues(nextPoLineForm(line));
+      }
+    } catch (err) {
+      setFormError(extractErrorMessage(err, "Unable to delete this saved PO Detail."));
     }
   };
 
@@ -1019,7 +1080,36 @@ export default function PODetails() {
             >
               {formError && <div className="po-form-error">{formError}</div>}
 
-              <div className="po-form-grid">
+              {savedNewLines.map((line, index) => (
+                <section className="boq-item-card" key={`${line.po}-${line.code}-${index}`}>
+                  {(() => {
+                    const editingThisLine = editingSavedId === line.id;
+                    const values = editingThisLine ? formValues : line;
+                    return <>
+                  <div className="boq-item-card-header">
+                    <span className="boq-item-number">PO Detail {index + 1} — {editingThisLine ? "Editing" : "Saved"}</span>
+                    <div className="boq-item-card-actions">
+                      <button type="button" className="boq-item-save" onClick={() => editingThisLine ? handleSave(true) : editSavedLine(line)}><Pencil size={14} /> {editingThisLine ? "Save changes" : "Edit"}</button>
+                      <button type="button" className="icon-btn boq-item-remove" onClick={() => deleteSavedLine(line)} aria-label={`Delete PO Detail ${index + 1}`}><Trash2 size={15} /></button>
+                    </div>
+                  </div>
+                  <div className="po-form-grid">
+                    <label className="po-field"><span>Phase</span><input name="phase" value={values.phase} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="po-field"><span>PO No</span><input name="po" value={values.po} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="po-field"><span>PO Date</span><input name="date" value={values.date} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="po-field"><span>Item Code</span><input name="code" value={values.code} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="po-field po-field-span2"><span>Item Description</span><input name="desc" value={values.desc} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="po-field"><span>Qty Ordered</span><input name="qty" value={values.qty} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                    <label className="po-field"><span>Unit Rate</span><input name="rate" value={values.rate} onChange={handleFormChange} readOnly={!editingThisLine} /></label>
+                  </div>
+                    </>;
+                  })()}
+                </section>
+              ))}
+
+              {savedNewLines.length > 0 && <div className="po-new-line-heading"><span>{editingSavedId ? "Edit PO Detail" : "New PO Detail"}</span></div>}
+
+              {!editingSavedId && <div className="po-form-grid">
                 <label className="po-field">
                   <span>Phase</span>
                   <SearchableSelect
@@ -1137,16 +1227,20 @@ export default function PODetails() {
                     placeholder="Select status"
                   />
                 </label>
-              </div>
+              </div>}
             </form>
 
             <div className="modal-footer">
               <button type="button" className="po-btn-secondary" onClick={requestClose} disabled={saving}>
                 Cancel
               </button>
-              <button type="button" className="po-btn-primary" onClick={handleSave} disabled={saving}>
+              <button type="button" className="po-btn-secondary" onClick={() => handleSave(true)} disabled={saving}>
+                {saving ? <Loader2 size={16} className="spin" /> : <Plus size={16} />}
+                {saving ? "Saving..." : "Save & Add New"}
+              </button>
+              <button type="button" className="po-btn-primary" onClick={() => handleSave(false)} disabled={saving}>
                 {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
-                {saving ? "Saving..." : "Save"}
+                {saving ? "Saving..." : "Save All & Close"}
               </button>
             </div>
           </div>
