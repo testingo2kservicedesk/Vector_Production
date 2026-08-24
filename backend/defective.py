@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
 from firebase_config import db, bucket
 from auth_utils import roles_required
+from read_cache import cached_read
 
 defects_bp = Blueprint("defects", __name__)
 defects_collection = db.collection("defective_units")
@@ -99,6 +100,7 @@ def create_defect():
 
 @defects_bp.route("/defects", methods=["GET"])
 @roles_required("admin", "coadmin", "production_incharge")
+@cached_read("defects", ttl_seconds=120)
 def list_defects():
     try:
         try:

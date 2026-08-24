@@ -1,10 +1,12 @@
 import math
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 from flask import Blueprint, jsonify, request
 
 from firebase_config import db
 from auth_utils import roles_required
+from read_cache import cached_read
 
 stockregister_bp = Blueprint("stockregister", __name__)
 
@@ -42,17 +44,42 @@ def _production_key(data):
     return (data.get("modelId", ""), data.get("phaseId", ""))
 
 
+def _collection_docs(path):
+    """Read a collection once and return its documents for stock calculation."""
+    return list(db.collection(path).stream())
+
+
 @stockregister_bp.route("/stock-register", methods=["GET"])
 @roles_required("admin", "coadmin", "production_incharge")
+@cached_read("stock-register", ttl_seconds=120)
 def list_stock_register():
     """Read-only material stock derived from PO, invoice and BOQ data."""
     try:
         items = {}
         po_line_keys = {}
         completed_production = {}
-        active_model_ids = {doc.id for doc in db.collection("models").stream()}
+
+        # These are independent Firestore reads. Fetching them sequentially
+        # made users wait for the sum of every network round trip before the
+        # first table page could be calculated.
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            model_future = executor.submit(_collection_docs, "models")
+            phase_future = executor.submit(lambda: list(db.collection_group("phases").stream()))
+            assembly_future = executor.submit(_collection_docs, "assembly_units")
+            po_future = executor.submit(_collection_docs, "po_details")
+            boq_future = executor.submit(lambda: list(db.collection_group("boqs").stream()))
+            invoice_future = executor.submit(_collection_docs, "invoices")
+
+            model_docs = model_future.result()
+            phase_docs = phase_future.result()
+            assembly_docs = assembly_future.result()
+            po_docs = po_future.result()
+            boq_docs = boq_future.result()
+            invoice_docs = invoice_future.result()
+
+        active_model_ids = {doc.id for doc in model_docs}
         phase_names = {}
-        for phase_doc in db.collection_group("phases").stream():
+        for phase_doc in phase_docs:
             phase_data = phase_doc.to_dict() or {}
             model_ref = phase_doc.reference.parent.parent
             if model_ref:
@@ -60,7 +87,7 @@ def list_stock_register():
 
         # Workbook rule: only a Completed unit that has passed QC consumes
         # material.  Each unit consumes the BOQ quantity-per-unit (reqQty).
-        for doc in db.collection("assembly_units").stream():
+        for doc in assembly_docs:
             data = doc.to_dict() or {}
             if data.get("stage") != "Completed" or data.get("qc") != "Passed":
                 continue
@@ -69,7 +96,7 @@ def list_stock_register():
 
         # PO lines define the materials being tracked.  No stock documents are
         # created or changed by this endpoint.
-        for doc in db.collection("po_details").stream():
+        for doc in po_docs:
             data = doc.to_dict() or {}
             code = data.get("code", "")
             if not code:
@@ -98,7 +125,7 @@ def list_stock_register():
 
         # BOQ buffer quantities provide the configured minimum-stock level.
         # Collection-group reads cover every model/phase without writes.
-        for boq_doc in db.collection_group("boqs").stream():
+        for boq_doc in boq_docs:
             boq = boq_doc.to_dict() or {}
             phase_ref = boq_doc.reference.parent.parent
             model_ref = phase_ref.parent.parent if phase_ref else None
@@ -133,7 +160,7 @@ def list_stock_register():
                 ) * item["reqQty"]
 
         # Qty Received on an invoice is the stock received against that PO.
-        for doc in db.collection("invoices").stream():
+        for doc in invoice_docs:
             data = doc.to_dict() or {}
             code = data.get("code", "")
             if not code:

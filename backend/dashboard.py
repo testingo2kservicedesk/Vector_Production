@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request
 
 from firebase_config import db
 from auth_utils import roles_required
+from read_cache import cached_read
 
 
 dashboard_bp = Blueprint("dashboard", __name__)
@@ -147,6 +148,7 @@ def _sales_dashboard_data(sales_docs, model_names, include_all_active_sales=Fals
 
 @dashboard_bp.route("/dashboard", methods=["GET"])
 @roles_required("admin", "coadmin", "production_incharge", "user")
+@cached_read("dashboard", ttl_seconds=120)
 def get_dashboard():
     """Return the dashboard's operational snapshot from live Firestore data."""
     try:

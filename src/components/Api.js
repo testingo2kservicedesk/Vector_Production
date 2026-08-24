@@ -7,12 +7,20 @@ const STORAGE_KEY = "vector_auth";
 const api = axios.create({ baseURL: API_BASE_URL });
 let activeMutations = 0;
 let activeRequests = 0;
-const GET_CACHE_TTL_MS = 30_000;
+// A save clears this cache immediately, so a few minutes of reuse makes page
+// navigation fast without leaving users looking at outdated application data.
+const GET_CACHE_TTL_MS = 3 * 60_000;
 const getCache = new Map();
+const pendingGetRequests = new Map();
 
 function cacheKey(config) {
   const params = new URLSearchParams(config.params || {}).toString();
   return `${config.baseURL || ""}${config.url || ""}${params ? `?${params}` : ""}`;
+}
+
+function requestKey(url, config = {}) {
+  const params = new URLSearchParams(config.params || {}).toString();
+  return `${config.baseURL || API_BASE_URL}${url}${params ? `?${params}` : ""}`;
 }
 
 function copyData(data) {
@@ -46,10 +54,13 @@ function publishMutationState() {
 // Attach the stored JWT to every outgoing request.
 api.interceptors.request.use((config) => {
   config.__vectorRequest = true;
-  activeRequests += 1;
-  publishRequestState();
   const method = String(config.method || "get").toLowerCase();
   if (method === "get") {
+    // The page-wide loader is reserved for data reads. Mutations use the
+    // existing busy state so saving does not cover the page with this loader.
+    config.__vectorTrackLoader = true;
+    activeRequests += 1;
+    publishRequestState();
     // The global loader represents page data loading only. Saves already use
     // their own busy state and must not leave the page loader visible.
     const key = cacheKey(config);
@@ -96,12 +107,12 @@ api.interceptors.response.use(
     if (response.config.__vectorCacheKey && response.headers?.["x-vector-cache"] !== "hit") {
       getCache.set(response.config.__vectorCacheKey, { data: copyData(response.data), savedAt: Date.now() });
     }
-    if (response.config.__vectorRequest) { activeRequests = Math.max(0, activeRequests - 1); publishRequestState(); }
+    if (response.config.__vectorTrackLoader) { activeRequests = Math.max(0, activeRequests - 1); publishRequestState(); }
     if (response.config.__vectorShowBusy) { activeMutations = Math.max(0, activeMutations - 1); publishMutationState(); }
     return response;
   },
   (error) => {
-    if (error.config?.__vectorRequest) { activeRequests = Math.max(0, activeRequests - 1); publishRequestState(); }
+    if (error.config?.__vectorTrackLoader) { activeRequests = Math.max(0, activeRequests - 1); publishRequestState(); }
     if (error.config?.__vectorShowBusy) { activeMutations = Math.max(0, activeMutations - 1); publishMutationState(); }
     if (error.response?.status === 401) {
       sessionStorage.removeItem(STORAGE_KEY);
@@ -110,5 +121,25 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// React Strict Mode (and rapid navigation) can start an identical GET before
+// the first one has completed. Share that one network request instead of
+// making Firestore perform the same read twice.
+const axiosGet = api.get.bind(api);
+api.get = (url, config = {}) => {
+  if (config.__vectorNoDedupe) return axiosGet(url, config);
+
+  const key = requestKey(url, config);
+  const pending = pendingGetRequests.get(key);
+  if (pending) return pending;
+
+  const requestPromise = axiosGet(url, config);
+  pendingGetRequests.set(key, requestPromise);
+  requestPromise.then(
+    () => pendingGetRequests.delete(key),
+    () => pendingGetRequests.delete(key),
+  );
+  return requestPromise;
+};
 
 export default api;
