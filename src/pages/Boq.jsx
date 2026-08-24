@@ -137,7 +137,7 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
       setItemCodesLoading(true);
       try {
         if (!itemCodesCache) {
-          itemCodesRequest ||= api.get(`${API_BASE_URL}/item-codes`)
+          itemCodesRequest ||= api.get(`${API_BASE_URL}/item-codes`, { __vectorBackground: true })
             .then((response) => {
               if (!response.data.success) throw new Error(response.data.message || "Failed to load Item Codes");
               itemCodesCache = response.data.itemCodes || [];
@@ -166,7 +166,7 @@ function BoqEditorModal({ phaseName, phaseItemCode = "", phaseItemCodeId = "", r
     const loadSuppliers = async () => {
       try {
         if (!suppliersCache) {
-          suppliersRequest ||= api.get(`${API_BASE_URL}/suppliers`)
+          suppliersRequest ||= api.get(`${API_BASE_URL}/suppliers`, { __vectorBackground: true })
             .then((response) => {
               if (!response.data.success) throw new Error(response.data.message || "Failed to load suppliers");
               suppliersCache = response.data.suppliers || [];
@@ -527,6 +527,7 @@ export default function BOQ({ model, phase, modelId, phaseId, onBack, readOnly =
 
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const lastLoadKeyRef = useRef("");
 
   // ---- Row-level bulk-select / delete state (same pattern as Model.jsx) ----
   const [selectMode, setSelectMode] = useState(false);
@@ -579,12 +580,18 @@ export default function BOQ({ model, phase, modelId, phaseId, onBack, readOnly =
   }, [page, resolvedModelId, resolvedPhaseId]);
 
   useEffect(() => {
-    setPage(1);
-  }, [resolvedModelId, resolvedPhaseId]);
+    const resourceKey = `${resolvedModelId || ""}:${resolvedPhaseId || ""}`;
+    const resourceChanged = !lastLoadKeyRef.current
+      || !lastLoadKeyRef.current.startsWith(`${resourceKey}:`);
+    const targetPage = resourceChanged ? 1 : page;
+    const loadKey = `${resourceKey}:${targetPage}`;
 
-  useEffect(() => {
-    loadBoq({ targetPage: page });
-  }, [loadBoq, page]);
+    if (resourceChanged && page !== 1) setPage(1);
+    if (lastLoadKeyRef.current === loadKey) return;
+
+    lastLoadKeyRef.current = loadKey;
+    loadBoq({ targetPage });
+  }, [loadBoq, page, resolvedModelId, resolvedPhaseId]);
 
   // Close the kebab menu when clicking outside it
   useEffect(() => {

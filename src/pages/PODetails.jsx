@@ -395,8 +395,8 @@ export default function PODetails() {
       setBoqPhasesError("");
       try {
         const [phaseRes, modelRes] = await Promise.all([
-          api.get(`${API_BASE_URL}/boq/phases`),
-          api.get(`${API_BASE_URL}/models`),
+          api.get(`${API_BASE_URL}/boq/phases`, { __vectorBackground: true }),
+          api.get(`${API_BASE_URL}/models`, { __vectorBackground: true }),
         ]);
         if (!phaseRes.data.success) {
           throw new Error(phaseRes.data.message || "Failed to load phases");
@@ -428,7 +428,8 @@ export default function PODetails() {
     setBoqItems([]);
     try {
       const res = await api.get(
-        `${API_BASE_URL}/models/${modelId}/phases/${phaseId}/boq`
+        `${API_BASE_URL}/models/${modelId}/phases/${phaseId}/boq`,
+        { __vectorBackground: true }
       );
       if (!res.data.success) {
         throw new Error(res.data.message || "Failed to load BOQ items");

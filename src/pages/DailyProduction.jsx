@@ -1613,7 +1613,9 @@ export default function DailyProduction() {
   const formIsIncomplete = validateAssemblyForm(formValues, { validateSerialList: !isEditMode }) !== null;
  
   useEffect(() => {
-    api.get(`${API_BASE_URL}/dashboard`).then((response) => setProductionStats(response.data)).catch(() => {});
+    api.get(`${API_BASE_URL}/dashboard`, { __vectorBackground: true })
+      .then((response) => setProductionStats(response.data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {

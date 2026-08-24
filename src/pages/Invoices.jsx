@@ -273,7 +273,7 @@ export default function Invoices() {
       setBoqPhasesLoading(true);
       setBoqPhasesError("");
       try {
-        const res = await api.get(`${API_BASE_URL}/boq/phases`);
+        const res = await api.get(`${API_BASE_URL}/boq/phases`, { __vectorBackground: true });
         if (!res.data.success) throw new Error(res.data.message || "Failed to load phases");
         if (!cancelled) setBoqPhases(res.data.phases || []);
       } catch (err) {
@@ -297,6 +297,7 @@ export default function Invoices() {
       try {
         const res = await api.get(`${API_BASE_URL}/po-details/invoice-options`, {
           params: { modelId: formValues.modelId, phaseId: formValues.phaseId },
+          __vectorBackground: true,
         });
         if (!res.data.success) throw new Error(res.data.message || "Failed to load PO numbers");
         if (!cancelled) setInvoicePoLines(res.data.poDetails || []);

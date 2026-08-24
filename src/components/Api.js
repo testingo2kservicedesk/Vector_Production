@@ -10,6 +10,8 @@ let activeRequests = 0;
 // A save clears this cache immediately, so a few minutes of reuse makes page
 // navigation fast without leaving users looking at outdated application data.
 const GET_CACHE_TTL_MS = 3 * 60_000;
+const PERF_LOGGING_ENABLED = process.env.NODE_ENV !== "production"
+  || process.env.REACT_APP_API_PERF_LOGGING === "true";
 const getCache = new Map();
 const pendingGetRequests = new Map();
 
@@ -27,6 +29,20 @@ function copyData(data) {
   return typeof structuredClone === "function"
     ? structuredClone(data)
     : JSON.parse(JSON.stringify(data));
+}
+
+function logGetTiming(config, outcome, response) {
+  if (!PERF_LOGGING_ENABLED || !config.__vectorRequestStartedAt) return;
+  const durationMs = performance.now() - config.__vectorRequestStartedAt;
+  const cache = response?.headers?.["x-vector-cache"] || "network";
+  const serverTiming = response?.headers?.["server-timing"] || "";
+  console.debug(`[Vector API] GET ${outcome}`, {
+    url: `${config.baseURL || ""}${config.url || ""}`,
+    durationMs: Math.round(durationMs),
+    cache,
+    serverTiming,
+    startedAt: new Date(config.__vectorRequestStartedAtEpoch).toISOString(),
+  });
 }
 
 function publishRequestState() {
@@ -56,11 +72,17 @@ api.interceptors.request.use((config) => {
   config.__vectorRequest = true;
   const method = String(config.method || "get").toLowerCase();
   if (method === "get") {
+    config.__vectorRequestStartedAt = performance.now();
+    config.__vectorRequestStartedAtEpoch = Date.now();
     // The page-wide loader is reserved for data reads. Mutations use the
     // existing busy state so saving does not cover the page with this loader.
-    config.__vectorTrackLoader = true;
-    activeRequests += 1;
-    publishRequestState();
+    // Dropdown and background refreshes can opt out while retaining caching,
+    // de-duplication, and timing diagnostics.
+    config.__vectorTrackLoader = !config.__vectorSuppressLoader && !config.__vectorBackground;
+    if (config.__vectorTrackLoader) {
+      activeRequests += 1;
+      publishRequestState();
+    }
     // The global loader represents page data loading only. Saves already use
     // their own busy state and must not leave the page loader visible.
     const key = cacheKey(config);
@@ -108,11 +130,13 @@ api.interceptors.response.use(
       getCache.set(response.config.__vectorCacheKey, { data: copyData(response.data), savedAt: Date.now() });
     }
     if (response.config.__vectorTrackLoader) { activeRequests = Math.max(0, activeRequests - 1); publishRequestState(); }
+    if (response.config.__vectorRequestStartedAt) logGetTiming(response.config, "complete", response);
     if (response.config.__vectorShowBusy) { activeMutations = Math.max(0, activeMutations - 1); publishMutationState(); }
     return response;
   },
   (error) => {
     if (error.config?.__vectorTrackLoader) { activeRequests = Math.max(0, activeRequests - 1); publishRequestState(); }
+    if (error.config?.__vectorRequestStartedAt) logGetTiming(error.config, "failed", error.response);
     if (error.config?.__vectorShowBusy) { activeMutations = Math.max(0, activeMutations - 1); publishMutationState(); }
     if (error.response?.status === 401) {
       sessionStorage.removeItem(STORAGE_KEY);

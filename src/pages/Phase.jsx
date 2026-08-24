@@ -166,7 +166,7 @@ export default function Phase({ model, onBack, readOnly = false }) {
     setItemCodesLoading(true);
     setError("");
     try {
-      const response = await api.get(`${API_BASE_URL}/item-codes`);
+      const response = await api.get(`${API_BASE_URL}/item-codes`, { __vectorBackground: true });
       if (!response.data.success) throw new Error(response.data.message || "Failed to load Item Codes");
       // Do not create a code merely by opening this dialog. The user can
       // deliberately select “Create New Item Code” from the dropdown.
