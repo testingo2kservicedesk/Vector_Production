@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
 from firebase_config import db
 from auth_utils import roles_required
+from read_cache import cached_read
  
 saleregister_bp = Blueprint("saleregister", __name__)
 sales_collection = db.collection("sale_register")
@@ -186,6 +187,7 @@ def _validate_available_serials(data, serial_numbers, exclude_sale_id=None):
 
 @saleregister_bp.route("/sales/available-serials", methods=["GET"])
 @roles_required("admin", "coadmin", "production_incharge")
+@cached_read("available-serials", ttl_seconds=120)
 def list_available_serials():
     try:
         serials = _available_assembly_units(
@@ -342,6 +344,7 @@ def create_sale():
  
  
 @saleregister_bp.route("/sales", methods=["GET"])
+@cached_read("sales", ttl_seconds=120)
 def list_sales():
     try:
         page, limit = _parse_pagination_params(request.args)

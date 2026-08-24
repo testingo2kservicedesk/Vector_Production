@@ -5,6 +5,7 @@ import time
 
 from flask import Flask, g, request
 from flask_cors import CORS
+from read_cache import invalidate_read_cache
 
 from login import login_bp
 from adminlogin import admin_login_bp
@@ -42,6 +43,14 @@ def create_app():
         if elapsed_ms >= 500:
             logger.warning("slow_request method=%s path=%s status=%s total_ms=%.1f auth_ms=%.1f",
                            request.method, request.path, response.status_code, elapsed_ms, auth_ms)
+        # Any successful data write makes every derived list/dashboard snapshot
+        # stale.  Versioning avoids deleting large cache collections.
+        if (
+            request.method in {"POST", "PUT", "PATCH", "DELETE"}
+            and response.status_code < 400
+            and not request.path.startswith(("/login", "/forgot-password", "/account/change-password"))
+        ):
+            invalidate_read_cache()
         return response
 
     @app.get("/health")

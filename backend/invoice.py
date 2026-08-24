@@ -3,6 +3,7 @@ import math
  
 from flask import Blueprint, request, jsonify
 from firebase_config import db
+from read_cache import cached_read
  
 invoice_bp = Blueprint("invoices", __name__)
 invoices_collection = db.collection("invoices")
@@ -97,6 +98,7 @@ def create_invoice():
  
  
 @invoice_bp.route("/invoices", methods=["GET"])
+@cached_read("invoices", ttl_seconds=120)
 def list_invoices():
     try:
         page, limit = _parse_pagination_params(request.args)

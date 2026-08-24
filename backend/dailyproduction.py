@@ -4,6 +4,7 @@ import math
 from flask import Blueprint, request, jsonify
 from firebase_config import db, users_collection
 from auth_utils import roles_required
+from read_cache import cached_read
  
 dailyproduction_bp = Blueprint("dailyproduction", __name__)
 assembly_collection = db.collection("assembly_units")
@@ -211,6 +212,7 @@ def _parse_pagination_params(args):
 
 @dailyproduction_bp.route("/production-users", methods=["GET"])
 @roles_required(*MANAGER_ROLES)
+@cached_read("production-users", ttl_seconds=300)
 def list_production_users():
     """Return safe user display names for production assignment dropdowns."""
     try:
@@ -310,6 +312,7 @@ def create_assembly_unit():
  
 @dailyproduction_bp.route("/assembly", methods=["GET"])
 @roles_required(*ALL_PRODUCTION_ROLES)
+@cached_read("assembly", ttl_seconds=120)
 def list_assembly_units():
     try:
         page, limit = _parse_pagination_params(request.args)

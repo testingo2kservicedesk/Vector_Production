@@ -2,6 +2,7 @@ import bcrypt
 from flask import Blueprint, request, jsonify
 from firebase_config import users_collection, user_document_for_email, create_user_email_index, user_email_index
 from auth_utils import roles_required
+from read_cache import cached_read
 
 admin_users_bp = Blueprint("admin_users", __name__)
 
@@ -50,6 +51,7 @@ def create_user():
 
 @admin_users_bp.route("/admin/users", methods=["GET"])
 @roles_required("admin", "coadmin")  # coadmin can view, only admin can create (above)
+@cached_read("admin-users", ttl_seconds=120)
 def list_users():
     docs = users_collection.stream()
     users = [

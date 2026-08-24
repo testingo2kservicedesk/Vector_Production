@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify
 from firebase_config import db
 from firebase_admin import firestore
 from auth_utils import roles_required
+from read_cache import cached_read
 
 models_bp = Blueprint("models", __name__)
 models_collection = db.collection("models")
@@ -126,6 +127,7 @@ def create_model():
 
 @models_bp.route("/models", methods=["GET"])
 @roles_required("admin", "coadmin", "production_incharge", "user")
+@cached_read("models", ttl_seconds=300)
 def list_models():
     try:
         docs = models_collection.order_by("date").stream()
@@ -136,6 +138,7 @@ def list_models():
 
 @models_bp.route("/suppliers", methods=["GET"])
 @roles_required("admin", "coadmin")
+@cached_read("suppliers", ttl_seconds=300)
 def list_suppliers():
     try:
         suppliers = [
@@ -200,6 +203,7 @@ def _serialize_phase(doc):
 
 @models_bp.route("/models/<model_id>/phases", methods=["GET"])
 @roles_required("admin", "coadmin", "production_incharge", "user")
+@cached_read("phases", ttl_seconds=300)
 def list_phases(model_id):
     try:
         phases = _phase_doc(model_id).order_by("date").stream()
@@ -418,6 +422,7 @@ def _generate_next_item_code():
 
 @models_bp.route("/item-codes", methods=["GET"])
 @roles_required("admin", "coadmin")
+@cached_read("item-codes", ttl_seconds=300)
 def list_item_codes():
     """Return all known Item Codes for the searchable BOQ combobox."""
     try:
@@ -521,6 +526,7 @@ def _parse_pagination_params(args):
 
 @models_bp.route("/models/<model_id>/phases/<phase_id>/boq", methods=["GET"])
 @roles_required("admin", "coadmin")
+@cached_read("boq", ttl_seconds=120)
 def get_boq(model_id, phase_id):
     try:
         docs = list(_boq_collection(model_id, phase_id).limit(1).stream())
@@ -655,6 +661,7 @@ def delete_boq(model_id, phase_id, boq_id):
     
 @models_bp.route("/boq/phases", methods=["GET"])
 @roles_required("admin", "coadmin")
+@cached_read("boq-phases", ttl_seconds=300)
 def list_boq_phases():
     """
     Returns every phase across every model, tagged with its parent model,

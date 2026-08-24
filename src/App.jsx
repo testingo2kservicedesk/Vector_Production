@@ -132,6 +132,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider, useAuth } from "./context/Auth";
 import ProtectedRoute from "./components/ProtectedRoute";
+import GlobalApiLoader from "./components/GlobalApiLoader";
 import Sidebar from "./components/Sidebar";
 import navConfig from "./data/navConfig";
 import LoginPage from "./pages/LoginPage";
@@ -382,6 +383,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
+          <GlobalApiLoader />
           <Routes>
             <Route path="/" element={<LoginPage />} />
             <Route path="/login" element={<LoginPage />} />

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, request, jsonify
 
 from firebase_config import db
+from read_cache import cached_read
 from auth_utils import roles_required
  
 podetails_bp = Blueprint("podetails", __name__)
@@ -211,6 +212,7 @@ def create_po_detail():
  
  
 @podetails_bp.route("/po-details", methods=["GET"])
+@cached_read("po-details", ttl_seconds=120)
 
 def list_po_details():
 
@@ -314,6 +316,7 @@ def list_po_details():
  
  
 @podetails_bp.route("/po-details/invoice-options", methods=["GET"])
+@cached_read("invoice-options", ttl_seconds=120)
 def invoice_options():
     """Return PO lines for one BOQ phase for the Invoice form."""
     model_id = request.args.get("modelId", "").strip()
